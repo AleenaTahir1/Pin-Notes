@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Note } from '../types';
@@ -27,12 +28,18 @@ export function NotesList() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [loadNotes]);
 
+  // Auto-refresh every 2s so list stays current as notes are edited
+  useEffect(() => {
+    const interval = setInterval(loadNotes, 2000);
+    return () => clearInterval(interval);
+  }, [loadNotes]);
+
   const handleNewNote = async () => {
     try {
       await invoke('create_note', {
-        color: '#fff59d',
-        position_x: 200,
-        position_y: 200,
+        color: '#fff9c4',
+        positionX: 200,
+        positionY: 200,
       });
       loadNotes();
     } catch (error) {
@@ -54,6 +61,15 @@ export function NotesList() {
       loadNotes();
     } catch (error) {
       console.error('[Pin Notes] Failed to delete note:', error);
+    }
+  };
+
+  const handleMinimize = async () => {
+    try {
+      const win = getCurrentWindow();
+      await win.minimize();
+    } catch (error) {
+      console.error('[Pin Notes] Failed to minimize:', error);
     }
   };
 
@@ -94,7 +110,11 @@ export function NotesList() {
   const getPreview = (content: string) => {
     const firstLine = content.split('\n').find(line => line.trim() !== '');
     if (!firstLine) return 'Empty note';
-    const clean = firstLine.replace(/[#*_~`=]/g, '').trim();
+    const clean = firstLine
+      .replace(/==\{\w+\}/g, '')
+      .replace(/==/g, '')
+      .replace(/[#*_~`]/g, '')
+      .trim();
     return clean || 'Empty note';
   };
 
@@ -103,59 +123,94 @@ export function NotesList() {
       <div className="notes-list-header" onMouseDown={handleDrag}>
         <span className="notes-list-title">Notes</span>
         <div className="notes-list-actions">
-          <button className="notes-list-add-btn" onClick={handleNewNote} title="New note">
+          <motion.button
+            className="notes-list-add-btn"
+            onClick={handleNewNote}
+            title="New note"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
             +
-          </button>
-          <button className="notes-list-close-btn" onClick={handleClose} title="Close">
+          </motion.button>
+          <motion.button
+            className="notes-list-minimize-btn"
+            onClick={handleMinimize}
+            title="Minimize"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </motion.button>
+          <motion.button
+            className="notes-list-close-btn"
+            onClick={handleClose}
+            title="Close"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
-          </button>
+          </motion.button>
         </div>
       </div>
 
       <div className="notes-list-content">
         {notes.length === 0 ? (
-          <div className="notes-list-empty">
+          <motion.div
+            className="notes-list-empty"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          >
             <div className="notes-list-empty-icon">📝</div>
             <span>No notes yet</span>
-          </div>
+            <span className="notes-list-empty-hint">Click + to create your first note</span>
+          </motion.div>
         ) : (
-          notes.map(note => (
-            <div
-              key={note.id}
-              className="notes-list-item"
-              style={{ borderLeftColor: note.color }}
-              onClick={() => handleOpenNote(note.id)}
-            >
-              <div
-                className="notes-list-item-color"
-                style={{ backgroundColor: note.color }}
-              />
-              <div className="notes-list-item-body">
-                <div className="notes-list-item-preview">
-                  {getPreview(note.content)}
-                </div>
-                <div className="notes-list-item-date">
-                  {formatDate(note.updated_at)}
-                </div>
-              </div>
-              <button
-                className="notes-list-item-delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteNote(note.id);
-                }}
-                title="Delete"
+          <AnimatePresence mode="popLayout">
+            {notes.map((note, index) => (
+              <motion.div
+                key={note.id}
+                className="notes-list-item"
+                style={{ '--item-glow': `linear-gradient(90deg, ${note.color}, transparent)` } as React.CSSProperties}
+                onClick={() => handleOpenNote(note.id)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ duration: 0.25, delay: index * 0.05 }}
+                whileHover={{ x: 4 }}
+                layout
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-          ))
+                <div className="notes-list-item-body">
+                  <div className="notes-list-item-preview">
+                    {getPreview(note.content)}
+                  </div>
+                  <div className="notes-list-item-date">
+                    {formatDate(note.updated_at)}
+                  </div>
+                </div>
+                <motion.button
+                  className="notes-list-item-delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteNote(note.id);
+                  }}
+                  title="Delete"
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.8 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </motion.button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
       </div>
     </div>

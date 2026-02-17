@@ -1,11 +1,20 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 import { useNoteStore } from '../store/noteStore';
 import { NoteEditor } from './NoteEditor';
 import { ColorPicker } from './ColorPicker';
 import { DeleteModal } from './DeleteModal';
-import { HighlighterPicker } from './HighlighterPicker';
+import { NOTE_FONTS, HIGHLIGHTER_COLORS, HighlighterColor } from '../types';
+
+const HIGHLIGHTER_DISPLAY: Record<HighlighterColor, string> = {
+  yellow: '#fff59d',
+  pink: '#f8bbd9',
+  green: '#a5d6a7',
+  blue: '#90caf9',
+  purple: '#ce93d8',
+};
 
 interface NoteWindowProps {
   noteId: string;
@@ -28,9 +37,9 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   } = useNoteStore();
 
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showHighlighterPicker, setShowHighlighterPicker] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [fontIndex, setFontIndex] = useState(0);
 
   useEffect(() => {
     loadNote(noteId);
@@ -39,14 +48,13 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   useEffect(() => {
     const handleClickOutside = () => {
       if (showColorPicker) setShowColorPicker(false);
-      if (showHighlighterPicker) setShowHighlighterPicker(false);
     };
 
-    if (showColorPicker || showHighlighterPicker) {
+    if (showColorPicker) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showColorPicker, showHighlighterPicker]);
+  }, [showColorPicker]);
 
   const handleStartDrag = useCallback(async (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -64,6 +72,31 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   const handleClose = useCallback(async () => {
     await closeNote();
   }, [closeNote]);
+
+  const handleMinimize = useCallback(async () => {
+    try {
+      const win = getCurrentWindow();
+      await win.minimize();
+    } catch (err) {
+      console.warn('Minimize failed:', err);
+    }
+  }, []);
+
+  const handleNewNote = useCallback(async () => {
+    try {
+      await invoke('create_note', {
+        color: '#fff9c4',
+        positionX: 300,
+        positionY: 300,
+      });
+    } catch (error) {
+      console.error('[Pin Notes] Failed to create note:', error);
+    }
+  }, []);
+
+  const handleCycleFont = useCallback(() => {
+    setFontIndex((prev) => (prev + 1) % NOTE_FONTS.length);
+  }, []);
 
   const handleDeleteClick = useCallback(() => {
     setShowDeleteModal(true);
@@ -90,9 +123,11 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   }, [handleClose, showDeleteModal]);
 
   const titlebarColor = useMemo(() => {
-    if (!note) return '#fff59d';
-    return darkenColor(note.color, 0.03);
+    if (!note) return '#fff9c4';
+    return darkenColor(note.color, 0.02);
   }, [note?.color]);
+
+  const currentFont = NOTE_FONTS[fontIndex].value;
 
   if (isLoading) {
     return (
@@ -117,6 +152,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
         style={{
           backgroundColor: note.color,
           '--note-rotation': `${rotation}deg`,
+          '--note-font': currentFont,
         } as React.CSSProperties}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -124,26 +160,27 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
         onKeyDown={handleKeyDown}
         tabIndex={-1}
       >
-        <div className="note-pin" />
-
         <div
           className="note-titlebar"
           data-tauri-drag-region
           onMouseDown={handleStartDrag}
           style={{ backgroundColor: titlebarColor }}
         >
+          {/* LEFT: color, font */}
           <div className="titlebar-left">
             <button
               className="titlebar-btn color-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowColorPicker(!showColorPicker);
-                setShowHighlighterPicker(false);
               }}
               title="Change color"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="12" r="8" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4c3.1 0 5.6-2.5 5.6-5.6C23 5.8 18.1 2 12 2z" />
+                <circle cx="8" cy="10" r="1.5" fill="currentColor" stroke="none" />
+                <circle cx="12" cy="7" r="1.5" fill="currentColor" stroke="none" />
+                <circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none" />
               </svg>
             </button>
             <AnimatePresence>
@@ -157,38 +194,48 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 />
               )}
             </AnimatePresence>
-          </div>
 
-          <div className="titlebar-center">
             <button
-              className={`titlebar-btn highlighter-btn ${highlighterColor ? 'active' : ''}`}
+              className="titlebar-btn font-btn"
               onClick={(e) => {
                 e.stopPropagation();
-                setShowHighlighterPicker(!showHighlighterPicker);
-                setShowColorPicker(false);
+                handleCycleFont();
               }}
-              title="Highlighter"
+              title={`Font: ${NOTE_FONTS[fontIndex].name}`}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 19l7-7 3 3-7 7-3-3z" />
-                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-                <path d="M2 2l7.586 7.586" />
-                <circle cx="11" cy="11" r="2" fill="currentColor" />
-              </svg>
+              <span className="font-btn-label" style={{ fontFamily: currentFont }}>Aa</span>
             </button>
-            <AnimatePresence>
-              {showHighlighterPicker && (
-                <HighlighterPicker
-                  key="highlighter-picker"
-                  currentColor={highlighterColor}
-                  onColorSelect={setHighlighterColor}
-                  onClose={() => setShowHighlighterPicker(false)}
-                />
-              )}
-            </AnimatePresence>
           </div>
 
+          {/* RIGHT: new note, minimize, delete, close */}
           <div className="titlebar-right">
+            <button
+              className="titlebar-btn new-note-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNewNote();
+              }}
+              title="New note"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+
+            <button
+              className="titlebar-btn minimize-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMinimize();
+              }}
+              title="Minimize"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+
             <button
               className="titlebar-btn delete-btn"
               onClick={handleDeleteClick}
@@ -220,7 +267,19 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             highlighterColor={highlighterColor}
             onContentChange={setContent}
             onToggleEdit={toggleEditing}
+            font={currentFont}
           />
+          <div className="highlighter-sidebar">
+            {(Object.keys(HIGHLIGHTER_COLORS) as HighlighterColor[]).map((color) => (
+              <button
+                key={color}
+                className={`hl-side-dot ${highlighterColor === color ? 'active' : ''}`}
+                style={{ backgroundColor: HIGHLIGHTER_DISPLAY[color] }}
+                onClick={() => setHighlighterColor(color)}
+                title={`${color.charAt(0).toUpperCase() + color.slice(1)} highlighter`}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="resize-handle" />

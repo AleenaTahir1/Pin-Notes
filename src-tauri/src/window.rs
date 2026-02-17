@@ -18,7 +18,6 @@ pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
         .decorations(false)
         .transparent(true)
         .always_on_top(true)
-        .skip_taskbar(true)
         .resizable(true)
         .visible(true)
         .build()

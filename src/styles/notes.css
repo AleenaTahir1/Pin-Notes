@@ -3,12 +3,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&display=swap');
 
 :root {
-  --note-yellow: #fff59d;
-  --note-pink: #f8bbd9;
-  --note-blue: #90caf9;
-  --note-green: #a5d6a7;
-  --note-purple: #ce93d8;
-  --note-orange: #ffcc80;
+  --note-buttercream: #fff9c4;
+  --note-blush: #fff0f5;
+  --note-sky: #eef5ff;
+  --note-mint: #eefaf2;
+  --note-lilac: #f5eeff;
+  --note-peach: #fff5eb;
+  --note-bubblegum: #ffe8f5;
+  --note-seafoam: #e8fff5;
 
   --highlight-yellow: rgba(255, 245, 157, 0.6);
   --highlight-pink: rgba(248, 187, 208, 0.5);
@@ -16,8 +18,8 @@
   --highlight-blue: rgba(144, 202, 249, 0.5);
   --highlight-purple: rgba(206, 147, 216, 0.5);
 
-  --shadow-note: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-lifted: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+  --shadow-note: 0 4px 12px rgba(0, 0, 0, 0.10), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-lifted: 0 12px 36px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.08);
 
   --text-dark: #333;
   --text-mid: #666;
@@ -44,17 +46,25 @@ html, body, #root {
   background: transparent;
 }
 
-/* ===== Note Window ===== */
+/* ===== Note Window — 3D Notepad ===== */
 .note-window {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  border-radius: 2px;
-  box-shadow: var(--shadow-note);
-  overflow: hidden;
+  border-radius: 4px 4px 6px 6px;
+  overflow: visible;
   position: relative;
   transition: box-shadow 0.3s ease, transform 0.3s ease;
+  /* 3D stacked paper + depth shadow */
+  box-shadow:
+    /* main drop shadow */
+    0 4px 12px rgba(0, 0, 0, 0.10),
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    /* stacked page layers beneath */
+    2px 2px 0 0px rgba(0, 0, 0, 0.03),
+    4px 4px 0 0px rgba(0, 0, 0, 0.02),
+    6px 6px 0 0px rgba(0, 0, 0, 0.01);
 }
 
 .note-window:focus {
@@ -62,8 +72,46 @@ html, body, #root {
 }
 
 .note-window.dragging {
-  box-shadow: var(--shadow-lifted);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.14),
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    2px 2px 0 0px rgba(0, 0, 0, 0.03),
+    4px 4px 0 0px rgba(0, 0, 0, 0.02),
+    6px 6px 0 0px rgba(0, 0, 0, 0.01);
   transform: scale(1.01);
+}
+
+/* Stacked paper pages behind the note */
+.note-window::before,
+.note-window::after {
+  content: '';
+  position: absolute;
+  border-radius: 4px 4px 6px 6px;
+  pointer-events: none;
+}
+
+/* Second page layer */
+.note-window::before {
+  bottom: -3px;
+  left: 3px;
+  right: -3px;
+  top: 3px;
+  background: inherit;
+  filter: brightness(0.97);
+  z-index: -1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Third page layer */
+.note-window::after {
+  bottom: -6px;
+  left: 6px;
+  right: -6px;
+  top: 6px;
+  background: inherit;
+  filter: brightness(0.94);
+  z-index: -2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
 .note-window.loading,
@@ -71,7 +119,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--note-yellow);
+  background: var(--note-buttercream);
 }
 
 /* ===== Loading ===== */
@@ -93,32 +141,40 @@ html, body, #root {
   50% { transform: translateY(-6px) rotate(5deg); }
 }
 
-/* ===== Pin / Tape ===== */
-.note-pin {
-  position: absolute;
-  top: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 48px;
-  height: 16px;
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 1px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  pointer-events: none;
-}
-
-/* ===== Titlebar ===== */
+/* ===== Titlebar — Notepad top with spiral rings ===== */
 .note-titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 34px;
+  height: 38px;
   padding: 2px 6px;
   cursor: grab;
   user-select: none;
   -webkit-app-region: drag;
   position: relative;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Spiral ring holes along the top */
+.note-titlebar::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 16px;
+  right: 16px;
+  height: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 14px,
+    rgba(0, 0, 0, 0.12) 14px,
+    rgba(0, 0, 0, 0.12) 18px,
+    transparent 18px,
+    transparent 28px
+  );
+  border-radius: 0 0 2px 2px;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .note-titlebar:active {
@@ -126,7 +182,6 @@ html, body, #root {
 }
 
 .titlebar-left,
-.titlebar-center,
 .titlebar-right {
   display: flex;
   align-items: center;
@@ -139,16 +194,12 @@ html, body, #root {
   justify-content: flex-start;
 }
 
-.titlebar-center {
-  flex: 0;
-}
-
 .titlebar-right {
-  flex: 1;
+  flex: 0;
   justify-content: flex-end;
 }
 
-/* ===== Buttons ===== */
+/* ===== Buttons — Neumorphic 3D ===== */
 .titlebar-btn {
   display: flex;
   align-items: center;
@@ -156,31 +207,41 @@ html, body, #root {
   width: 24px;
   height: 24px;
   border: none;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   cursor: pointer;
   color: var(--text-mid);
-  transition: background 0.15s, color 0.15s, transform 0.15s;
+  transition: box-shadow 0.15s, color 0.15s, transform 0.15s, background 0.15s;
   -webkit-app-region: no-drag;
+  /* Neumorphic raised */
+  box-shadow:
+    1px 1px 3px rgba(0, 0, 0, 0.10),
+    -1px -1px 3px rgba(255, 255, 255, 0.7);
 }
 
 .titlebar-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
   color: var(--text-dark);
   transform: scale(1.1);
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.12),
+    -2px -2px 4px rgba(255, 255, 255, 0.8);
 }
 
 .titlebar-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.95);
+  /* Neumorphic pressed inset */
+  box-shadow:
+    inset 1px 1px 3px rgba(0, 0, 0, 0.12),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.5);
 }
 
 .titlebar-btn.close-btn:hover {
-  background: rgba(220, 50, 50, 0.15);
+  background: rgba(220, 50, 50, 0.12);
   color: #c62828;
 }
 
 .titlebar-btn.delete-btn:hover {
-  background: rgba(220, 50, 50, 0.1);
+  background: rgba(220, 50, 50, 0.08);
   color: #d32f2f;
 }
 
@@ -190,8 +251,11 @@ html, body, #root {
 }
 
 .titlebar-btn.mode-btn.editing {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.06);
   color: var(--text-dark);
+  box-shadow:
+    inset 1px 1px 3px rgba(0, 0, 0, 0.10),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.5);
 }
 
 .titlebar-btn.highlighter-btn:hover {
@@ -200,6 +264,30 @@ html, body, #root {
 
 .titlebar-btn.highlighter-btn.active {
   background: rgba(255, 245, 157, 0.5);
+  box-shadow:
+    inset 1px 1px 3px rgba(0, 0, 0, 0.10),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.5);
+}
+
+.titlebar-btn.minimize-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.titlebar-btn.new-note-btn:hover {
+  background: rgba(76, 175, 80, 0.12);
+  color: #2e7d32;
+}
+
+.titlebar-btn.font-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.font-btn-label {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+  pointer-events: none;
 }
 
 /* ===== Color Picker ===== */
@@ -228,7 +316,7 @@ html, body, #root {
 
 .color-picker-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 
@@ -238,24 +326,31 @@ html, body, #root {
   border: 2px solid transparent;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.15s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, border-color 0.15s, box-shadow 0.15s;
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.10),
+    -2px -2px 4px rgba(255, 255, 255, 0.8);
 }
 
 .color-option:hover {
   transform: scale(1.15);
+  box-shadow:
+    3px 3px 5px rgba(0, 0, 0, 0.12),
+    -3px -3px 5px rgba(255, 255, 255, 0.9);
 }
 
 .color-option.active {
   border-color: var(--text-dark);
+  box-shadow:
+    inset 1px 1px 3px rgba(0, 0, 0, 0.12),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.6);
 }
 
 /* ===== Highlighter Picker ===== */
 .highlighter-picker {
   position: absolute;
   top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   padding: 6px 10px;
   background: white;
   border-radius: 14px;
@@ -302,7 +397,59 @@ html, body, #root {
   color: rgba(0, 0, 0, 0.4);
 }
 
-/* ===== Note Content ===== */
+/* ===== Highlighter Sidebar — Neumorphic ===== */
+.highlighter-sidebar {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 5px;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+  border-radius: 14px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  box-shadow:
+    2px 2px 5px rgba(0, 0, 0, 0.06),
+    -2px -2px 5px rgba(255, 255, 255, 0.6);
+}
+
+.note-content:hover .highlighter-sidebar {
+  opacity: 1;
+}
+
+.hl-side-dot {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s, box-shadow 0.15s;
+  box-shadow:
+    1px 1px 2px rgba(0, 0, 0, 0.10),
+    -1px -1px 2px rgba(255, 255, 255, 0.6);
+}
+
+.hl-side-dot:hover {
+  transform: scale(1.25);
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.12),
+    -2px -2px 4px rgba(255, 255, 255, 0.7);
+}
+
+.hl-side-dot.active {
+  border-color: rgba(0, 0, 0, 0.25);
+  transform: scale(1.15);
+  box-shadow:
+    inset 1px 1px 2px rgba(0, 0, 0, 0.10),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* ===== Note Content — Paper surface ===== */
 .note-content {
   flex: 1;
   overflow: hidden;
@@ -310,6 +457,8 @@ html, body, #root {
   flex-direction: column;
   perspective: 800px;
   position: relative;
+  /* Subtle inset to look like recessed paper */
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* ===== Page Flip ===== */
@@ -352,7 +501,7 @@ html, body, #root {
   transform: rotateY(0deg);
 }
 
-/* ===== Flip Button ===== */
+/* ===== Flip Button — Neumorphic ===== */
 .flip-btn {
   position: absolute;
   bottom: 6px;
@@ -360,7 +509,7 @@ html, body, #root {
   width: 32px;
   height: 32px;
   border: none;
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -368,26 +517,37 @@ html, body, #root {
   justify-content: center;
   color: var(--text-light);
   z-index: 20;
-  transition: background 0.2s, color 0.2s, transform 0.2s;
+  transition: box-shadow 0.2s, color 0.2s, transform 0.2s, background 0.2s;
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.10),
+    -2px -2px 4px rgba(255, 255, 255, 0.7);
 }
 
 .flip-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
   color: var(--text-dark);
   transform: scale(1.1);
+  box-shadow:
+    3px 3px 6px rgba(0, 0, 0, 0.12),
+    -3px -3px 6px rgba(255, 255, 255, 0.8);
 }
 
 .flip-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.95);
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.10),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.5);
 }
 
 .flip-btn.flipped {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.05);
   color: var(--text-mid);
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.08),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.5);
 }
 
-/* ===== Textarea ===== */
-.note-textarea {
+/* ===== Contenteditable Editor ===== */
+.note-editable {
   flex: 1;
   width: 100%;
   height: 100%;
@@ -398,14 +558,26 @@ html, body, #root {
   font-size: 18px;
   line-height: 1.8;
   color: var(--text-dark);
-  resize: none;
   outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+  cursor: text;
 }
 
-.note-textarea::placeholder {
+.note-editable:empty::before {
+  content: attr(data-placeholder);
   color: var(--text-light);
   font-style: italic;
+  pointer-events: none;
 }
+
+/* Editor highlight colors */
+.note-editable .hl-yellow { background: rgba(255, 245, 157, 0.5); padding: 0 1px; border-radius: 2px; }
+.note-editable .hl-pink { background: rgba(248, 187, 208, 0.45); padding: 0 1px; border-radius: 2px; }
+.note-editable .hl-green { background: rgba(165, 214, 167, 0.45); padding: 0 1px; border-radius: 2px; }
+.note-editable .hl-blue { background: rgba(144, 202, 249, 0.45); padding: 0 1px; border-radius: 2px; }
+.note-editable .hl-purple { background: rgba(206, 147, 216, 0.45); padding: 0 1px; border-radius: 2px; }
 
 .note-preview-container {
   flex: 1;
@@ -530,9 +702,14 @@ mark {
   padding: 0 2px;
 }
 
+mark.highlight-yellow { background: linear-gradient(180deg, transparent 40%, var(--highlight-yellow) 40%, var(--highlight-yellow) 88%, transparent 88%); }
+mark.highlight-pink,
 .highlight-pink { background: linear-gradient(180deg, transparent 40%, var(--highlight-pink) 40%, var(--highlight-pink) 88%, transparent 88%); }
+mark.highlight-green,
 .highlight-green { background: linear-gradient(180deg, transparent 40%, var(--highlight-green) 40%, var(--highlight-green) 88%, transparent 88%); }
+mark.highlight-blue,
 .highlight-blue { background: linear-gradient(180deg, transparent 40%, var(--highlight-blue) 40%, var(--highlight-blue) 88%, transparent 88%); }
+mark.highlight-purple,
 .highlight-purple { background: linear-gradient(180deg, transparent 40%, var(--highlight-purple) 40%, var(--highlight-purple) 88%, transparent 88%); }
 
 /* ===== Resize Handle ===== */
@@ -613,20 +790,29 @@ mark {
 
 .delete-modal-btn {
   padding: 8px 16px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: none;
   border-radius: 20px;
   font-family: var(--font-hand);
   font-size: 15px;
   cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+  transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
+  box-shadow:
+    3px 3px 6px rgba(0, 0, 0, 0.08),
+    -3px -3px 6px rgba(255, 255, 255, 0.9);
 }
 
 .delete-modal-btn:hover {
   transform: scale(1.04);
+  box-shadow:
+    4px 4px 8px rgba(0, 0, 0, 0.10),
+    -4px -4px 8px rgba(255, 255, 255, 0.95);
 }
 
 .delete-modal-btn:active {
   transform: scale(0.96);
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.08),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.9);
 }
 
 .delete-modal-btn.cancel {
@@ -683,9 +869,8 @@ mark {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  background: #fafafa;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: #e4e4e4;
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -693,12 +878,12 @@ mark {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  background: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 12px 16px;
+  background: #e4e4e4;
   cursor: grab;
   -webkit-app-region: drag;
   user-select: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .notes-list-header:active {
@@ -707,23 +892,24 @@ mark {
 
 .notes-list-title {
   font-family: var(--font-hand);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-dark);
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .notes-list-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   -webkit-app-region: no-drag;
 }
 
 .notes-list-add-btn {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border: none;
-  background: var(--note-yellow);
-  border-radius: 50%;
+  background: #e4e4e4;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 20px;
   font-weight: 700;
@@ -731,47 +917,94 @@ mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   -webkit-app-region: no-drag;
   line-height: 1;
+  box-shadow:
+    5px 5px 10px #bebebe,
+    -5px -5px 10px #ffffff;
+  transition: box-shadow 0.2s ease;
 }
 
 .notes-list-add-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    6px 6px 12px #bebebe,
+    -6px -6px 12px #ffffff;
 }
 
 .notes-list-add-btn:active {
-  transform: scale(0.95);
+  box-shadow:
+    inset 3px 3px 6px #bebebe,
+    inset -3px -3px 6px #ffffff;
 }
 
 .notes-list-close-btn {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border: none;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 50%;
+  background: #e4e4e4;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
   color: var(--text-mid);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s, transform 0.15s;
   -webkit-app-region: no-drag;
+  box-shadow:
+    5px 5px 10px #bebebe,
+    -5px -5px 10px #ffffff;
+  transition: box-shadow 0.2s ease, color 0.15s;
 }
 
 .notes-list-close-btn:hover {
-  background: rgba(220, 50, 50, 0.1);
   color: #c62828;
-  transform: scale(1.1);
+  box-shadow:
+    6px 6px 12px #bebebe,
+    -6px -6px 12px #ffffff;
+}
+
+.notes-list-close-btn:active {
+  box-shadow:
+    inset 3px 3px 6px #bebebe,
+    inset -3px -3px 6px #ffffff;
+}
+
+.notes-list-minimize-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: #e4e4e4;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  box-shadow:
+    5px 5px 10px #bebebe,
+    -5px -5px 10px #ffffff;
+  transition: box-shadow 0.2s ease, color 0.15s;
+}
+
+.notes-list-minimize-btn:hover {
+  color: var(--text-dark);
+  box-shadow:
+    6px 6px 12px #bebebe,
+    -6px -6px 12px #ffffff;
+}
+
+.notes-list-minimize-btn:active {
+  box-shadow:
+    inset 3px 3px 6px #bebebe,
+    inset -3px -3px 6px #ffffff;
 }
 
 .notes-list-content {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 12px;
 }
 
 .notes-list-empty {
@@ -787,37 +1020,68 @@ mark {
 }
 
 .notes-list-empty-icon {
-  font-size: 36px;
-  opacity: 0.5;
+  font-size: 40px;
+  opacity: 0.4;
+  filter: grayscale(30%);
+}
+
+.notes-list-empty-hint {
+  font-size: 13px;
+  color: var(--text-light);
+  opacity: 0.7;
 }
 
 .notes-list-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  margin-bottom: 4px;
-  background: white;
-  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  border-left: 4px solid var(--note-yellow);
+  position: relative;
+  overflow: hidden;
+  background: #e4e4e4;
+  box-shadow:
+    5px 5px 10px #bebebe,
+    -5px -5px 10px #ffffff;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Colored glow gradient from the note's color */
+.notes-list-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: var(--item-glow);
+  opacity: 0.35;
+  pointer-events: none;
+  border-radius: 12px 0 0 12px;
+  transition: opacity 0.2s, width 0.2s;
+}
+
+.notes-list-item:hover::before {
+  opacity: 0.5;
+  width: 50%;
 }
 
 .notes-list-item:hover {
-  background: #f5f5f5;
-  transform: translateX(2px);
+  box-shadow:
+    7px 7px 14px #bebebe,
+    -7px -7px 14px #ffffff;
 }
 
 .notes-list-item:active {
-  transform: scale(0.98);
+  box-shadow:
+    inset 3px 3px 6px #bebebe,
+    inset -3px -3px 6px #ffffff;
 }
 
-.notes-list-item-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.notes-list-item:active::before {
+  opacity: 0.6;
 }
 
 .notes-list-item-body {
@@ -837,28 +1101,33 @@ mark {
 .notes-list-item-date {
   font-size: 11px;
   color: var(--text-light);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .notes-list-item-delete {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: none;
-  background: transparent;
-  border-radius: 50%;
+  background: #e4e4e4;
+  border-radius: 8px;
   cursor: pointer;
   color: var(--text-light);
   font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
+  box-shadow:
+    3px 3px 6px #bebebe,
+    -3px -3px 6px #ffffff;
+  transition: box-shadow 0.2s ease, color 0.15s;
 }
 
 .notes-list-item-delete:hover {
-  background: rgba(220, 50, 50, 0.1);
   color: #c62828;
+  box-shadow:
+    inset 2px 2px 4px #bebebe,
+    inset -2px -2px 4px #ffffff;
 }
 
 /* ===== Utility ===== */

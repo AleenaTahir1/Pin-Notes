@@ -57,7 +57,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     }
     saveTimeout = setTimeout(() => {
       get().save();
-    }, 500);
+    }, 100);
   },
 
   setColor: (color: string) => {

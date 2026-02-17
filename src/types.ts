@@ -11,14 +11,16 @@ export interface Note {
   is_visible: boolean;
 }
 
-// Sticky note colors - warm pastels
+// Sticky note colors — airy soft pastels
 export const NOTE_COLORS = {
-  yellow: '#fff59d',
-  pink: '#f8bbd9',
-  blue: '#90caf9',
-  green: '#a5d6a7',
-  purple: '#ce93d8',
-  orange: '#ffcc80',
+  buttercream: '#fff9c4',
+  blush: '#fff0f5',
+  sky: '#eef5ff',
+  mint: '#eefaf2',
+  lilac: '#f5eeff',
+  peach: '#fff5eb',
+  bubblegum: '#ffe8f5',
+  seafoam: '#e8fff5',
 } as const;
 
 export type NoteColor = keyof typeof NOTE_COLORS;
@@ -33,6 +35,13 @@ export const HIGHLIGHTER_COLORS = {
 } as const;
 
 export type HighlighterColor = keyof typeof HIGHLIGHTER_COLORS;
+
+// Available fonts for notes
+export const NOTE_FONTS = [
+  { name: 'Handwriting', value: "'Caveat', 'Patrick Hand', cursive" },
+  { name: 'Clean', value: "'Segoe UI', system-ui, sans-serif" },
+  { name: 'Mono', value: "'Cascadia Code', 'Fira Code', monospace" },
+] as const;
 
 // Generate a slight random rotation for natural sticky note feel
 export function getRandomRotation(): number {

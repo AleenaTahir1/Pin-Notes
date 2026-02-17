@@ -1,14 +1,19 @@
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 interface MarkdownRendererProps {
   content: string;
   onClick: () => void;
 }
 
-// Process highlight syntax ==text== before passing to markdown
+// Process highlight syntax =={color}text== before passing to markdown
 function processHighlights(text: string): string {
-  // Replace ==text== with <mark>text</mark>
-  return text.replace(/==([^=]+)==/g, '<mark>$1</mark>');
+  // Replace =={color}text== with <mark class="highlight-{color}">text</mark>
+  // Also supports legacy ==text== (no color) as default yellow highlight
+  return text.replace(/==(?:\{(\w+)\})?([^=]+)==/g, (_match, color, content) => {
+    const highlightClass = color ? `highlight-${color}` : '';
+    return `<mark class="${highlightClass}">${content}</mark>`;
+  });
 }
 
 export function MarkdownRenderer({ content, onClick }: MarkdownRendererProps) {
@@ -19,6 +24,7 @@ export function MarkdownRenderer({ content, onClick }: MarkdownRendererProps) {
     <div className="markdown-preview" onClick={onClick}>
       {content ? (
         <ReactMarkdown
+          rehypePlugins={[rehypeRaw]}
           components={{
             h1: ({ children, node: _node }) => <h1 className="md-h1">{children}</h1>,
             h2: ({ children, node: _node }) => <h2 className="md-h2">{children}</h2>,
@@ -48,9 +54,6 @@ export function MarkdownRenderer({ content, onClick }: MarkdownRendererProps) {
             strong: ({ children, node: _node }) => <strong className="md-strong">{children}</strong>,
             em: ({ children, node: _node }) => <em className="md-em">{children}</em>,
           }}
-          // Allow raw HTML for our mark tags
-          allowedElements={undefined}
-          unwrapDisallowed={false}
         >
           {processedContent}
         </ReactMarkdown>
