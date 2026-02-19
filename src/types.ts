@@ -9,6 +9,7 @@ export interface Note {
   created_at: number;
   updated_at: number;
   is_visible: boolean;
+  is_pinned: boolean;
 }
 
 // Sticky note colors — airy soft pastels

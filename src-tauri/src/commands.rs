@@ -147,6 +147,20 @@ pub async fn close_note(
 }
 
 #[tauri::command]
+pub async fn toggle_pin_note(
+    storage: State<'_, NotesStorage>,
+    id: String,
+) -> Result<Note, String> {
+    if let Some(mut note) = storage.get_note(&id)? {
+        note.is_pinned = !note.is_pinned;
+        note.updated_at = chrono::Utc::now().timestamp();
+        storage.update_note(note)
+    } else {
+        Err("Note not found".to_string())
+    }
+}
+
+#[tauri::command]
 pub async fn show_all_notes(
     app: AppHandle,
     storage: State<'_, NotesStorage>,

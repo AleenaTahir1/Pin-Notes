@@ -1,32 +1,32 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { MarkdownRenderer } from './MarkdownRenderer';
+import { useEffect, useRef, useCallback } from 'react';
 import { HighlighterColor } from '../types';
 
 interface NoteEditorProps {
   content: string;
-  isEditing: boolean;
   highlighterColor: HighlighterColor | null;
   onContentChange: (content: string) => void;
-  onToggleEdit: () => void;
   font?: string;
 }
 
 // Convert stored =={color}text== markup to HTML for contenteditable display
+// Handles multiline highlights: =={pink}line1\nline2== → <mark>line1<br>line2</mark>
 function markupToHtml(text: string): string {
-  const lines = text.split('\n');
-  return lines.map((line, i) => {
-    let escaped = line
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+  let escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
-    escaped = escaped.replace(/==(?:\{(\w+)\})?([^=]+)==/g, (_m, color, content) => {
-      const c = color || 'yellow';
-      return `<mark class="hl-${c}">${content}</mark>`;
-    });
+  // Match highlights that may span multiple lines (lazy match)
+  escaped = escaped.replace(/==(?:\{(\w+)\})?([\s\S]+?)==/g, (_m, color, content) => {
+    const c = color || 'yellow';
+    const htmlContent = content.replace(/\n/g, '<br>');
+    return `<mark class="hl-${c}">${htmlContent}</mark>`;
+  });
 
-    return escaped;
-  }).join('<br>');
+  // Convert remaining newlines (outside highlights) to <br>
+  escaped = escaped.replace(/\n/g, '<br>');
+
+  return escaped;
 }
 
 // Convert contenteditable HTML back to =={color}text== markup for storage
@@ -44,8 +44,18 @@ function htmlToMarkup(element: HTMLElement): string {
         const cls = el.className;
         const match = cls.match(/hl-(\w+)/);
         const color = match ? match[1] : 'yellow';
-        const inner = el.textContent || '';
-        result += `=={${color}}${inner}==`;
+        // Walk children to preserve <br> as newlines inside highlights
+        result += `=={${color}}`;
+        Array.from(el.childNodes).forEach((child) => {
+          if (child.nodeType === Node.TEXT_NODE) {
+            result += child.textContent || '';
+          } else if ((child as HTMLElement).tagName === 'BR') {
+            result += '\n';
+          } else {
+            result += child.textContent || '';
+          }
+        });
+        result += '==';
       } else if (el.tagName === 'DIV') {
         // Browsers wrap new lines in <div>
         if (!isFirst && result.length > 0 && !result.endsWith('\n')) {
@@ -66,59 +76,114 @@ function htmlToMarkup(element: HTMLElement): string {
   return result;
 }
 
+// Check if a node is inside a <mark> element within a container
+function findParentMark(node: Node | null, container: HTMLElement): HTMLElement | null {
+  while (node && node !== container) {
+    if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).tagName === 'MARK') {
+      return node as HTMLElement;
+    }
+    node = node.parentNode;
+  }
+  return null;
+}
+
 export function NoteEditor({
   content,
-  isEditing,
   highlighterColor,
   onContentChange,
-  onToggleEdit,
   font,
 }: NoteEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
-  const lastContent = useRef(content);
-  const [showFront, setShowFront] = useState(isEditing);
+  const lastContent = useRef<string | null>(null);
+  const initializedRef = useRef(false);
 
-  // Initial load
+  // Render content into the editor whenever it changes externally
   useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = markupToHtml(content);
-      lastContent.current = content;
-    }
-  }, []);
+    if (!editorRef.current) return;
 
-  // Update editor when content changes externally (not from user typing)
-  useEffect(() => {
-    if (editorRef.current && content !== lastContent.current) {
-      if (!isInternalChange.current) {
-        editorRef.current.innerHTML = markupToHtml(content);
-      }
-      lastContent.current = content;
+    // Skip if this change came from user typing
+    if (isInternalChange.current) {
       isInternalChange.current = false;
+      lastContent.current = content;
+      return;
+    }
+
+    // Skip if content hasn't actually changed
+    if (content === lastContent.current) return;
+
+    // Save cursor position for external updates after init
+    const sel = window.getSelection();
+    let savedOffset = -1;
+    if (initializedRef.current && sel && sel.rangeCount > 0) {
+      try {
+        const range = sel.getRangeAt(0);
+        const preRange = document.createRange();
+        preRange.selectNodeContents(editorRef.current);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        savedOffset = preRange.toString().length;
+      } catch {
+        // ignore
+      }
+    }
+
+    editorRef.current.innerHTML = markupToHtml(content);
+    lastContent.current = content;
+    initializedRef.current = true;
+
+    // Restore cursor
+    if (savedOffset >= 0 && sel) {
+      try {
+        const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+        let charCount = 0;
+        let node: Text | null;
+        while ((node = walker.nextNode() as Text | null)) {
+          const len = node.textContent?.length || 0;
+          if (charCount + len >= savedOffset) {
+            const range = document.createRange();
+            range.setStart(node, savedOffset - charCount);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            break;
+          }
+          charCount += len;
+        }
+      } catch {
+        // ignore
+      }
     }
   }, [content]);
 
-  // Focus editor when switching to edit mode
+  // When highlighter is deselected, move cursor out of any <mark> element
+  // so the browser won't keep inserting typed text inside the mark
   useEffect(() => {
-    if (isEditing && editorRef.current) {
+    if (highlighterColor !== null || !editorRef.current) return;
+
+    const sel = window.getSelection();
+    if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return;
+
+    const markEl = findParentMark(sel.anchorNode, editorRef.current);
+    if (markEl) {
+      const range = document.createRange();
+      range.setStartAfter(markEl);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }, [highlighterColor]);
+
+  // Auto-focus editor on mount
+  useEffect(() => {
+    if (editorRef.current) {
       editorRef.current.focus();
-      // Move cursor to end
       const sel = window.getSelection();
       if (sel && editorRef.current.childNodes.length > 0) {
         sel.selectAllChildren(editorRef.current);
         sel.collapseToEnd();
       }
     }
-  }, [isEditing]);
-
-  useEffect(() => {
-    if (showFront !== isEditing) {
-      const timeout = setTimeout(() => {
-        setShowFront(isEditing);
-      }, 250);
-      return () => clearTimeout(timeout);
-    }
-  }, [isEditing, showFront]);
+  }, []);
 
   const handleInput = useCallback(() => {
     if (!editorRef.current) return;
@@ -161,59 +226,56 @@ export function NoteEditor({
     document.execCommand('insertText', false, text);
   }, []);
 
-  // Prevent Enter from creating <div> — use <br> instead
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       document.execCommand('insertLineBreak');
+      return;
     }
-  }, []);
+
+    // When highlighter is off and cursor is inside a <mark>, intercept typed
+    // characters and insert them OUTSIDE the mark so they aren't highlighted
+    if (
+      highlighterColor === null &&
+      e.key.length === 1 &&
+      !e.ctrlKey && !e.metaKey && !e.altKey
+    ) {
+      if (!editorRef.current) return;
+      const sel = window.getSelection();
+      if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return;
+
+      const markEl = findParentMark(sel.anchorNode, editorRef.current);
+      if (markEl) {
+        e.preventDefault();
+        // Insert the character as a text node right after the mark
+        const textNode = document.createTextNode(e.key);
+        markEl.parentNode!.insertBefore(textNode, markEl.nextSibling);
+        // Place cursor after the inserted character
+        const range = document.createRange();
+        range.setStart(textNode, textNode.length);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        handleInput();
+      }
+    }
+  }, [highlighterColor, handleInput]);
 
   return (
     <div className="note-editor">
-      <div className={`page-container ${!isEditing ? 'flipped' : ''}`}>
-        {/* Write side */}
-        <div className="page page-front">
-          <div
-            ref={editorRef}
-            className="note-editable"
-            contentEditable
-            onInput={handleInput}
-            onMouseUp={handleHighlight}
-            onPaste={handlePaste}
-            onKeyDown={handleKeyDown}
-            data-placeholder="Write something..."
-            spellCheck={false}
-            suppressContentEditableWarning
-            style={font ? { fontFamily: font } : undefined}
-          />
-        </div>
-
-        {/* Preview side */}
-        <div className="page page-back">
-          <div className="note-preview-container">
-            <MarkdownRenderer content={content} onClick={onToggleEdit} />
-          </div>
-        </div>
-      </div>
-
-      {/* Flip button */}
-      <button
-        className={`flip-btn ${!isEditing ? 'flipped' : ''}`}
-        onClick={onToggleEdit}
-        title={isEditing ? 'Preview' : 'Edit'}
-      >
-        {isEditing ? (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-          </svg>
-        )}
-      </button>
+      <div
+        ref={editorRef}
+        className="note-editable"
+        contentEditable
+        onInput={handleInput}
+        onMouseUp={handleHighlight}
+        onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
+        data-placeholder="Write something..."
+        spellCheck={false}
+        suppressContentEditableWarning
+        style={font ? { fontFamily: font } : undefined}
+      />
     </div>
   );
 }

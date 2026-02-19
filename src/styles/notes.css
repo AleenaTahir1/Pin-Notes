@@ -28,7 +28,6 @@
   --font-hand: 'Caveat', 'Patrick Hand', cursive;
   --font-mono: 'Cascadia Code', 'Fira Code', monospace;
 
-  --flip-duration: 0.5s;
 }
 
 *, *::before, *::after {
@@ -46,25 +45,22 @@ html, body, #root {
   background: transparent;
 }
 
+
 /* ===== Note Window — 3D Notepad ===== */
 .note-window {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  border-radius: 4px 4px 6px 6px;
-  overflow: visible;
+  border-radius: 4px;
+  overflow: hidden;
   position: relative;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-  /* 3D stacked paper + depth shadow */
+  transition: box-shadow 0.3s ease;
+  transform-origin: center 60%;
+  /* Floating notepad shadow */
   box-shadow:
-    /* main drop shadow */
-    0 4px 12px rgba(0, 0, 0, 0.10),
-    0 8px 24px rgba(0, 0, 0, 0.06),
-    /* stacked page layers beneath */
-    2px 2px 0 0px rgba(0, 0, 0, 0.03),
-    4px 4px 0 0px rgba(0, 0, 0, 0.02),
-    6px 6px 0 0px rgba(0, 0, 0, 0.01);
+    0 8px 20px rgba(0, 0, 0, 0.12),
+    0 16px 40px rgba(0, 0, 0, 0.08);
 }
 
 .note-window:focus {
@@ -73,45 +69,37 @@ html, body, #root {
 
 .note-window.dragging {
   box-shadow:
-    0 12px 36px rgba(0, 0, 0, 0.14),
-    0 4px 12px rgba(0, 0, 0, 0.08),
-    2px 2px 0 0px rgba(0, 0, 0, 0.03),
-    4px 4px 0 0px rgba(0, 0, 0, 0.02),
-    6px 6px 0 0px rgba(0, 0, 0, 0.01);
-  transform: scale(1.01);
+    0 16px 48px rgba(0, 0, 0, 0.18),
+    0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-/* Stacked paper pages behind the note */
+/* Stacked page layers behind the note */
 .note-window::before,
 .note-window::after {
   content: '';
   position: absolute;
-  border-radius: 4px 4px 6px 6px;
+  border-radius: 4px;
   pointer-events: none;
 }
 
 /* Second page layer */
 .note-window::before {
-  bottom: -3px;
-  left: 3px;
-  right: -3px;
-  top: 3px;
+  inset: 0;
   background: inherit;
-  filter: brightness(0.97);
+  filter: brightness(0.96);
   z-index: -1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  transform: translate(2px, 3px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Third page layer */
 .note-window::after {
-  bottom: -6px;
-  left: 6px;
-  right: -6px;
-  top: 6px;
+  inset: 0;
   background: inherit;
-  filter: brightness(0.94);
+  filter: brightness(0.92);
   z-index: -2;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  transform: translate(4px, 6px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.04);
 }
 
 .note-window.loading,
@@ -141,40 +129,19 @@ html, body, #root {
   50% { transform: translateY(-6px) rotate(5deg); }
 }
 
-/* ===== Titlebar — Notepad top with spiral rings ===== */
+/* ===== Titlebar ===== */
 .note-titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 38px;
-  padding: 2px 6px;
+  height: 42px;
+  padding: 6px 6px 2px 6px;
   cursor: grab;
   user-select: none;
   -webkit-app-region: drag;
   position: relative;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-/* Spiral ring holes along the top */
-.note-titlebar::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: 16px;
-  right: 16px;
-  height: 4px;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0px,
-    transparent 14px,
-    rgba(0, 0, 0, 0.12) 14px,
-    rgba(0, 0, 0, 0.12) 18px,
-    transparent 18px,
-    transparent 28px
-  );
-  border-radius: 0 0 2px 2px;
-  pointer-events: none;
-  z-index: 5;
+  z-index: 2;
 }
 
 .note-titlebar:active {
@@ -256,6 +223,10 @@ html, body, #root {
   box-shadow:
     inset 1px 1px 3px rgba(0, 0, 0, 0.10),
     inset -1px -1px 3px rgba(255, 255, 255, 0.5);
+}
+
+.titlebar-btn.menu-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .titlebar-btn.highlighter-btn:hover {
@@ -455,95 +426,18 @@ html, body, #root {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  perspective: 800px;
   position: relative;
   /* Subtle inset to look like recessed paper */
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-/* ===== Page Flip ===== */
+/* ===== Editor ===== */
 .note-editor {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-}
-
-.page-container {
-  flex: 1;
-  position: relative;
-  transform-style: preserve-3d;
-}
-
-.page {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  transition: transform var(--flip-duration) cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: center center;
-}
-
-.page-front {
-  z-index: 2;
-}
-
-.page-back {
-  z-index: 1;
-  transform: rotateY(180deg);
-}
-
-.page-container.flipped .page-front {
-  transform: rotateY(-180deg);
-}
-
-.page-container.flipped .page-back {
-  transform: rotateY(0deg);
-}
-
-/* ===== Flip Button — Neumorphic ===== */
-.flip-btn {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-light);
-  z-index: 20;
-  transition: box-shadow 0.2s, color 0.2s, transform 0.2s, background 0.2s;
-  box-shadow:
-    2px 2px 4px rgba(0, 0, 0, 0.10),
-    -2px -2px 4px rgba(255, 255, 255, 0.7);
-}
-
-.flip-btn:hover {
-  color: var(--text-dark);
-  transform: scale(1.1);
-  box-shadow:
-    3px 3px 6px rgba(0, 0, 0, 0.12),
-    -3px -3px 6px rgba(255, 255, 255, 0.8);
-}
-
-.flip-btn:active {
-  transform: scale(0.95);
-  box-shadow:
-    inset 2px 2px 4px rgba(0, 0, 0, 0.10),
-    inset -2px -2px 4px rgba(255, 255, 255, 0.5);
-}
-
-.flip-btn.flipped {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--text-mid);
-  box-shadow:
-    inset 2px 2px 4px rgba(0, 0, 0, 0.08),
-    inset -2px -2px 4px rgba(255, 255, 255, 0.5);
 }
 
 /* ===== Contenteditable Editor ===== */
@@ -579,138 +473,6 @@ html, body, #root {
 .note-editable .hl-blue { background: rgba(144, 202, 249, 0.45); padding: 0 1px; border-radius: 2px; }
 .note-editable .hl-purple { background: rgba(206, 147, 216, 0.45); padding: 0 1px; border-radius: 2px; }
 
-.note-preview-container {
-  flex: 1;
-  overflow: auto;
-  height: 100%;
-}
-
-/* ===== Markdown Preview ===== */
-.markdown-preview {
-  padding: 12px 14px;
-  min-height: 100%;
-  cursor: text;
-  font-family: var(--font-hand);
-  font-size: 18px;
-  line-height: 1.8;
-}
-
-.markdown-preview .placeholder {
-  color: var(--text-light);
-  font-style: italic;
-}
-
-.md-h1 {
-  font-size: 1.5em;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  padding-bottom: 4px;
-  border-bottom: 1.5px solid rgba(0, 0, 0, 0.1);
-}
-
-.md-h2 {
-  font-size: 1.3em;
-  font-weight: 600;
-  margin: 16px 0 8px 0;
-}
-
-.md-h3 {
-  font-size: 1.15em;
-  font-weight: 600;
-  margin: 12px 0 6px 0;
-}
-
-.md-p {
-  margin: 0 0 8px 0;
-  line-height: 1.8;
-}
-
-.md-ul, .md-ol {
-  margin: 0 0 8px 0;
-  padding-left: 20px;
-}
-
-.md-li {
-  margin: 4px 0;
-  line-height: 1.7;
-}
-
-.md-li::marker {
-  color: var(--text-light);
-}
-
-.md-code-inline {
-  font-family: var(--font-mono);
-  font-size: 0.82em;
-  background: rgba(0, 0, 0, 0.06);
-  padding: 1px 4px;
-  border-radius: 3px;
-}
-
-.md-pre {
-  margin: 8px 0;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 4px;
-  overflow-x: auto;
-}
-
-.md-code-block {
-  font-family: var(--font-mono);
-  font-size: 0.78em;
-  line-height: 1.6;
-}
-
-.md-blockquote {
-  margin: 8px 0;
-  padding: 6px 12px;
-  border-left: 3px solid rgba(0, 0, 0, 0.12);
-  font-style: italic;
-}
-
-.md-blockquote::before {
-  content: '\201C';
-  position: absolute;
-  top: -5px;
-  left: 6px;
-  font-size: 2em;
-  color: rgba(0, 0, 0, 0.08);
-  font-family: Georgia, serif;
-}
-
-.md-link {
-  color: #1976d2;
-  text-decoration: none;
-  border-bottom: 1px dashed #1976d2;
-}
-
-.md-link:hover {
-  border-bottom-style: solid;
-}
-
-.md-strong {
-  font-weight: 700;
-}
-
-.md-em {
-  font-style: italic;
-}
-
-.md-highlight,
-mark {
-  background: linear-gradient(180deg, transparent 40%, var(--highlight-yellow) 40%, var(--highlight-yellow) 88%, transparent 88%);
-  padding: 0 2px;
-}
-
-mark.highlight-yellow { background: linear-gradient(180deg, transparent 40%, var(--highlight-yellow) 40%, var(--highlight-yellow) 88%, transparent 88%); }
-mark.highlight-pink,
-.highlight-pink { background: linear-gradient(180deg, transparent 40%, var(--highlight-pink) 40%, var(--highlight-pink) 88%, transparent 88%); }
-mark.highlight-green,
-.highlight-green { background: linear-gradient(180deg, transparent 40%, var(--highlight-green) 40%, var(--highlight-green) 88%, transparent 88%); }
-mark.highlight-blue,
-.highlight-blue { background: linear-gradient(180deg, transparent 40%, var(--highlight-blue) 40%, var(--highlight-blue) 88%, transparent 88%); }
-mark.highlight-purple,
-.highlight-purple { background: linear-gradient(180deg, transparent 40%, var(--highlight-purple) 40%, var(--highlight-purple) 88%, transparent 88%); }
 
 /* ===== Resize Handle ===== */
 .resize-handle {
@@ -849,18 +611,9 @@ mark.highlight-purple,
 }
 
 /* ===== Animations ===== */
-@keyframes noteAppear {
-  0% { opacity: 0; transform: scale(0.9); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-.note-appear {
-  animation: noteAppear 0.25s ease-out forwards;
 }
 
 /* ===== Notes List Window ===== */
@@ -870,7 +623,6 @@ mark.highlight-purple,
   height: 100vh;
   width: 100vw;
   background: #e4e4e4;
-  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -1001,6 +753,60 @@ mark.highlight-purple,
     inset -3px -3px 6px #ffffff;
 }
 
+/* ===== Search Bar ===== */
+.notes-list-search-bar {
+  display: flex;
+  align-items: center;
+  margin: 8px 12px 4px 12px;
+  padding: 6px 10px;
+  background: #e4e4e4;
+  border-radius: 10px;
+  box-shadow:
+    inset 3px 3px 6px #bebebe,
+    inset -3px -3px 6px #ffffff;
+}
+
+.notes-list-search-icon {
+  color: var(--text-light);
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.notes-list-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font-hand);
+  font-size: 15px;
+  color: var(--text-dark);
+  outline: none;
+  min-width: 0;
+}
+
+.notes-list-search-input::placeholder {
+  color: var(--text-light);
+}
+
+.notes-list-search-clear {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.notes-list-search-clear:hover {
+  background: rgba(0, 0, 0, 0.14);
+  color: var(--text-dark);
+}
+
 .notes-list-content {
   flex: 1;
   overflow-y: auto;
@@ -1048,6 +854,20 @@ mark.highlight-purple,
   transition: box-shadow 0.2s ease;
 }
 
+/* Colored accent strip on left edge */
+.notes-list-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 4px;
+  background: var(--item-color);
+  border-radius: 0 4px 4px 0;
+  pointer-events: none;
+  transition: height 0.2s, width 0.2s;
+}
+
 /* Colored glow gradient from the note's color */
 .notes-list-item::before {
   content: '';
@@ -1055,17 +875,23 @@ mark.highlight-purple,
   left: 0;
   top: 0;
   bottom: 0;
-  width: 40%;
+  width: 50%;
   background: var(--item-glow);
-  opacity: 0.35;
+  opacity: 0.55;
   pointer-events: none;
   border-radius: 12px 0 0 12px;
   transition: opacity 0.2s, width 0.2s;
 }
 
 .notes-list-item:hover::before {
-  opacity: 0.5;
-  width: 50%;
+  opacity: 0.7;
+  width: 60%;
+}
+
+.notes-list-item:hover::after {
+  width: 5px;
+  top: 4px;
+  bottom: 4px;
 }
 
 .notes-list-item:hover {
@@ -1128,6 +954,137 @@ mark.highlight-purple,
   box-shadow:
     inset 2px 2px 4px #bebebe,
     inset -2px -2px 4px #ffffff;
+}
+
+/* ===== Pin Button ===== */
+.notes-list-item-pin {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.15s;
+  z-index: 1;
+}
+
+.notes-list-item-pin:hover {
+  color: var(--text-mid);
+}
+
+.notes-list-item-pin.pinned {
+  color: #d32f2f;
+}
+
+.notes-list-item-pin.pinned:hover {
+  color: #b71c1c;
+}
+
+.notes-list-pin-label {
+  color: #d32f2f;
+  font-size: 10px;
+  font-weight: 600;
+  margin-right: 5px;
+}
+
+/* Pinned note item subtle accent */
+.notes-list-item.pinned {
+  box-shadow:
+    5px 5px 10px #bebebe,
+    -5px -5px 10px #ffffff,
+    0 0 0 1px rgba(211, 47, 47, 0.1);
+}
+
+.notes-list-item-date {
+  display: flex;
+  align-items: center;
+}
+
+/* ===== Update Banner ===== */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #e4e4e4;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-family: var(--font-hand);
+  font-size: 13px;
+}
+
+.update-text {
+  color: var(--text-mid);
+  flex: 1;
+  min-width: 0;
+}
+
+.update-btn {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #e4e4e4;
+  font-family: var(--font-hand);
+  font-size: 13px;
+  font-weight: 600;
+  color: #2e7d32;
+  cursor: pointer;
+  box-shadow:
+    3px 3px 6px #bebebe,
+    -3px -3px 6px #ffffff;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.update-btn:hover {
+  transform: scale(1.05);
+  box-shadow:
+    4px 4px 8px #bebebe,
+    -4px -4px 8px #ffffff;
+}
+
+.update-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    inset 2px 2px 4px #bebebe,
+    inset -2px -2px 4px #ffffff;
+}
+
+.update-dismiss {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s, color 0.15s;
+}
+
+.update-dismiss:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-dark);
+}
+
+.update-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 3px;
+  transition: width 0.3s ease;
 }
 
 /* ===== Utility ===== */

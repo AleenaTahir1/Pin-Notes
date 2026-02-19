@@ -1,5 +1,12 @@
 use crate::storage::Note;
+use tauri::image::Image;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+
+const APP_ICON: &[u8] = include_bytes!("../icons/icon.png");
+
+fn app_icon() -> Result<Image<'static>, String> {
+    Image::from_bytes(APP_ICON).map_err(|e| e.to_string())
+}
 
 pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
     let window_label = format!("note-{}", note.id);
@@ -11,7 +18,7 @@ pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
 
     let url = WebviewUrl::App(format!("index.html?noteId={}", note.id).into());
 
-    WebviewWindowBuilder::new(app, &window_label, url)
+    let window = WebviewWindowBuilder::new(app, &window_label, url)
         .title("Pin Note")
         .inner_size(note.width as f64, note.height as f64)
         .position(note.position_x as f64, note.position_y as f64)
@@ -20,8 +27,13 @@ pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
         .always_on_top(true)
         .resizable(true)
         .visible(true)
+        .icon(app_icon()?)
+        .map_err(|e| e.to_string())?
         .build()
         .map_err(|e| e.to_string())?;
+
+    let _ = window.show();
+    let _ = window.set_focus();
 
     Ok(())
 }
@@ -37,17 +49,21 @@ pub fn create_notes_list_window(app: &AppHandle) -> Result<(), String> {
 
     let url = WebviewUrl::App("index.html?view=list".into());
 
-    WebviewWindowBuilder::new(app, window_label, url)
+    let window = WebviewWindowBuilder::new(app, window_label, url)
         .title("Pin Notes")
         .inner_size(300.0, 480.0)
         .position(50.0, 50.0)
         .decorations(false)
-        .transparent(true)
         .always_on_top(true)
         .resizable(true)
         .visible(true)
+        .icon(app_icon()?)
+        .map_err(|e| e.to_string())?
         .build()
         .map_err(|e| e.to_string())?;
+
+    let _ = window.show();
+    let _ = window.set_focus();
 
     Ok(())
 }

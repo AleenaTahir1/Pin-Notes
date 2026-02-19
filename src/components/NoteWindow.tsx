@@ -23,14 +23,12 @@ interface NoteWindowProps {
 export function NoteWindow({ noteId }: NoteWindowProps) {
   const {
     note,
-    isEditing,
     isLoading,
     rotation,
     highlighterColor,
     loadNote,
     setContent,
     setColor,
-    toggleEditing,
     setHighlighterColor,
     closeNote,
     clearNote,
@@ -94,6 +92,14 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     }
   }, []);
 
+  const handleOpenNotesList = useCallback(async () => {
+    try {
+      await invoke('open_notes_list');
+    } catch (error) {
+      console.error('[Pin Notes] Failed to open notes list:', error);
+    }
+  }, []);
+
   const handleCycleFont = useCallback(() => {
     setFontIndex((prev) => (prev + 1) % NOTE_FONTS.length);
   }, []);
@@ -148,14 +154,21 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   return (
     <>
       <motion.div
-        className={`note-window note-appear ${isDragging ? 'dragging' : ''}`}
+        className={`note-window ${isDragging ? 'dragging' : ''}`}
         style={{
           backgroundColor: note.color,
           '--note-rotation': `${rotation}deg`,
           '--note-font': currentFont,
+          perspective: 1200,
+          transformOrigin: 'center 60%',
         } as React.CSSProperties}
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        initial={{ scale: 0.9, opacity: 0, rotateX: 2 }}
+        animate={{
+          scale: isDragging ? 1.01 : 1,
+          opacity: 1,
+          rotateX: 2,
+          y: isDragging ? -2 : 0,
+        }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
         onKeyDown={handleKeyDown}
         tabIndex={-1}
@@ -166,8 +179,22 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
           onMouseDown={handleStartDrag}
           style={{ backgroundColor: titlebarColor }}
         >
-          {/* LEFT: color, font */}
+          {/* LEFT: menu, color, font */}
           <div className="titlebar-left">
+            <button
+              className="titlebar-btn menu-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenNotesList();
+              }}
+              title="All notes"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
             <button
               className="titlebar-btn color-btn"
               onClick={(e) => {
@@ -263,10 +290,8 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
         <div className="note-content">
           <NoteEditor
             content={note.content}
-            isEditing={isEditing}
             highlighterColor={highlighterColor}
             onContentChange={setContent}
-            onToggleEdit={toggleEditing}
             font={currentFont}
           />
           <div className="highlighter-sidebar">
@@ -275,7 +300,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 key={color}
                 className={`hl-side-dot ${highlighterColor === color ? 'active' : ''}`}
                 style={{ backgroundColor: HIGHLIGHTER_DISPLAY[color] }}
-                onClick={() => setHighlighterColor(color)}
+                onClick={() => setHighlighterColor(highlighterColor === color ? null : color)}
                 title={`${color.charAt(0).toUpperCase() + color.slice(1)} highlighter`}
               />
             ))}

@@ -14,6 +14,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(NotesStorage::new())
         .invoke_handler(tauri::generate_handler![
             create_note,
@@ -27,6 +29,7 @@ pub fn run() {
             update_note_position,
             update_note_size,
             close_note,
+            toggle_pin_note,
             show_all_notes,
         ])
         .setup(|app| {

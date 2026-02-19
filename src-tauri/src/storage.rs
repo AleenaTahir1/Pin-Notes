@@ -16,6 +16,8 @@ pub struct Note {
     pub created_at: i64,
     pub updated_at: i64,
     pub is_visible: bool,
+    #[serde(default)]
+    pub is_pinned: bool,
 }
 
 impl Note {
@@ -32,6 +34,7 @@ impl Note {
             created_at: now,
             updated_at: now,
             is_visible: true,
+            is_pinned: false,
         }
     }
 }

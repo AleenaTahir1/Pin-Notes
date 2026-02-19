@@ -17,6 +17,9 @@
     "opener:default",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
-    "positioner:default"
+    "positioner:default",
+    "updater:default",
+    "process:allow-restart",
+    "process:allow-exit"
   ]
 }
