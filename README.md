@@ -21,13 +21,13 @@ Pin notes to your desktop — always on top, always within reach.
 ### Notes List
 
 <p align="center">
-  <img src="screenshots/notes-list.png" alt="PinNotes Notes List" width="800" />
+  <img src="Screenshots/notes-list.png" alt="PinNotes Notes List" width="800" />
 </p>
 
 ### Note Window
 
 <p align="center">
-  <img src="screenshots/note-window.png" alt="PinNotes Note Window" width="800" />
+  <img src="Screenshots/note-window.png" alt="PinNotes Note Window" width="800" />
 </p>
 
 ---
