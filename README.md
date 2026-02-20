@@ -80,7 +80,7 @@ Download the latest release from the [Releases](https://github.com/AleenaTahir1/
 | Shortcut | Action |
 |----------|--------|
 | **Ctrl+Alt+P** | Create a new note |
-| **Alt+Shift+L** | Open notes list |
+| **Ctrl+Alt+L** | Open notes list |
 
 ### System Tray
 

@@ -18,8 +18,8 @@ pub fn register_global_hotkey(app: &AppHandle) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
-    // Alt+Shift+L — open the notes list
-    let list_shortcut = Shortcut::new(Some(Modifiers::ALT | Modifiers::SHIFT), Code::KeyL);
+    // Ctrl+Alt+L — open the notes list
+    let list_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyL);
     let app_handle_l = app.clone();
 
     app.global_shortcut()
