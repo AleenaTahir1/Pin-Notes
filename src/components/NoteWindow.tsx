@@ -80,6 +80,14 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     }
   }, []);
 
+  const handleOpenNotesList = useCallback(async () => {
+    try {
+      await invoke('open_notes_list');
+    } catch (error) {
+      console.error('[Pin Notes] Failed to open notes list:', error);
+    }
+  }, []);
+
   const handleNewNote = useCallback(async () => {
     try {
       await invoke('create_note', {
@@ -89,14 +97,6 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
       });
     } catch (error) {
       console.error('[Pin Notes] Failed to create note:', error);
-    }
-  }, []);
-
-  const handleOpenNotesList = useCallback(async () => {
-    try {
-      await invoke('open_notes_list');
-    } catch (error) {
-      console.error('[Pin Notes] Failed to open notes list:', error);
     }
   }, []);
 
@@ -179,7 +179,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
           onMouseDown={handleStartDrag}
           style={{ backgroundColor: titlebarColor }}
         >
-          {/* LEFT: menu, color, font */}
+          {/* LEFT: all notes, color, font */}
           <div className="titlebar-left">
             <button
               className="titlebar-btn menu-btn"
@@ -189,10 +189,11 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
               }}
               title="All notes"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="18" x2="20" y2="18" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
             </button>
             <button

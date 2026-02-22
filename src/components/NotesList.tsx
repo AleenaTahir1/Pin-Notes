@@ -71,7 +71,9 @@ export function NotesList() {
         positionX: 200,
         positionY: 200,
       });
-      loadNotes();
+      // Hide the dashboard after creating a note
+      const win = getCurrentWindow();
+      await win.close();
     } catch (error) {
       console.error('[Pin Notes] Failed to create note:', error);
     }

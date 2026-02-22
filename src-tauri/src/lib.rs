@@ -66,6 +66,13 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|_app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                // Prevent the app from exiting when all windows are closed.
+                // The app stays alive in the system tray so global shortcuts still work.
+                api.prevent_exit();
+            }
+        });
 }
