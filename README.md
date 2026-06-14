@@ -4,7 +4,7 @@
 
 # PinNotes
 
-**Floating sticky notes for Windows**
+**Floating sticky notes for Windows & macOS**
 
 Pin notes to your desktop — always on top, always within reach.
 
@@ -66,7 +66,9 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 
 Download the latest release from the [Releases](https://github.com/AleenaTahir1/Pin-Notes/releases) page:
 
-- **`.exe`** — Windows installer (NSIS). Installs in place and supports auto-updates.
+- **Windows** — `.exe` (NSIS installer). Installs in place and supports auto-updates.
+- **macOS** — `.dmg` (Apple Silicon & Intel). The build is unsigned, so on first launch
+  **right-click the app → Open** (or allow it under System Settings → Privacy & Security).
 
 ---
 

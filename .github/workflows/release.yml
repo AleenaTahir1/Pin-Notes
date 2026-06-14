@@ -66,7 +66,21 @@ jobs:
   release:
     needs: check-and-bump
     if: needs.check-and-bump.outputs.should_release == 'true'
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            args: ''
+            rust-targets: ''
+          - platform: 'macos-latest'        # Apple Silicon
+            args: '--target aarch64-apple-darwin'
+            rust-targets: 'aarch64-apple-darwin'
+          - platform: 'macos-latest'        # Intel
+            args: '--target x86_64-apple-darwin'
+            rust-targets: 'x86_64-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Checkout repository (with bumped version)
@@ -76,11 +90,14 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          key: ${{ matrix.platform }}-${{ matrix.args }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -104,10 +121,12 @@ jobs:
           releaseBody: |
             ## Pin Notes v__VERSION__
 
-            Floating sticky notes for Windows — fast, local, no account required.
+            Floating sticky notes — fast, local, no account required.
 
             ### Installation
-            - **`.msi`** — Standard Windows installer (recommended)
-            - **`.exe`** — NSIS installer
+            - **Windows** — `.exe` (NSIS installer, auto-updates in place)
+            - **macOS** — `.dmg` (Apple Silicon & Intel). Unsigned build: on first launch,
+              right-click the app → **Open**, then confirm (or allow it in System Settings → Privacy & Security).
           releaseDraft: false
           prerelease: false
+          args: ${{ matrix.args }}
