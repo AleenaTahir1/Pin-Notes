@@ -16,6 +16,7 @@ interface NoteStore {
   toggleEditing: () => void;
   setHighlighterColor: (color: HighlighterColor | null) => void;
   save: () => Promise<void>;
+  pullExternal: () => Promise<void>;
   clearNote: () => Promise<void>;
   deleteNote: () => Promise<void>;
   closeNote: () => Promise<void>;
@@ -84,6 +85,22 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       await invoke<Note>('update_note', { note });
     } catch (error) {
       console.error('[Pin Notes] Failed to save note:', error);
+    }
+  },
+
+  // Silently refresh this note from storage if it changed underneath us (e.g. the
+  // user edited the matching file in Obsidian and the background sync pulled it in).
+  // Caller is responsible for only invoking this when the editor isn't being typed in.
+  pullExternal: async () => {
+    const { note } = get();
+    if (!note) return;
+    try {
+      const fresh = await invoke<Note | null>('get_note', { id: note.id });
+      if (fresh && fresh.content !== note.content) {
+        set({ note: fresh });
+      }
+    } catch (error) {
+      console.warn('[Pin Notes] External refresh failed:', error);
     }
   },
 

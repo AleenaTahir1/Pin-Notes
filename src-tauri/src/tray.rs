@@ -7,9 +7,9 @@ use tauri::{
 use crate::window::{create_notes_list_window, spawn_new_note_at_cursor};
 
 pub fn setup_tray(app: &AppHandle) -> Result<(), String> {
-    let new_note = MenuItem::with_id(app, "new_note", "New Note", true, Some("Alt+Shift+N"))
+    let new_note = MenuItem::with_id(app, "new_note", "New Note", true, Some("Ctrl+Alt+P"))
         .map_err(|e| e.to_string())?;
-    let notes_list = MenuItem::with_id(app, "notes_list", "Notes List", true, None::<&str>)
+    let notes_list = MenuItem::with_id(app, "notes_list", "Notes List", true, Some("Ctrl+Alt+L"))
         .map_err(|e| e.to_string())?;
     let show_all = MenuItem::with_id(app, "show_all", "Show All Notes", true, None::<&str>)
         .map_err(|e| e.to_string())?;

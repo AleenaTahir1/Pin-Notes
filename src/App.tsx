@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { NoteWindow } from './components/NoteWindow';
 import { NotesList } from './components/NotesList';
+import { useTheme } from './store/theme';
 import './styles/notes.css';
 
 function App() {
   const [noteId, setNoteId] = useState<string | null>(null);
   const [view, setView] = useState<'note' | 'list'>('note');
+  const theme = useTheme();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -28,7 +30,7 @@ function App() {
 
   if (!noteId) {
     return (
-      <div className="note-window loading" style={{ backgroundColor: '#fff9c4' }}>
+      <div className="note-window loading" style={{ backgroundColor: theme === 'dark' ? '#1c1c20' : '#fff9c4' }}>
         <div className="loading-spinner" />
       </div>
     );

@@ -6,7 +6,8 @@ import { useNoteStore } from '../store/noteStore';
 import { NoteEditor } from './NoteEditor';
 import { ColorPicker } from './ColorPicker';
 import { DeleteModal } from './DeleteModal';
-import { NOTE_FONTS, HIGHLIGHTER_COLORS, HighlighterColor } from '../types';
+import { NOTE_FONTS, HIGHLIGHTER_COLORS, HighlighterColor, toDarkPastel, lightenColor, isDarkColor } from '../types';
+import { useTheme, toggleTheme } from '../store/theme';
 
 const HIGHLIGHTER_DISPLAY: Record<HighlighterColor, string> = {
   yellow: '#fff59d',
@@ -32,16 +33,29 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     setHighlighterColor,
     closeNote,
     clearNote,
+    save,
+    pullExternal,
   } = useNoteStore();
 
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fontIndex, setFontIndex] = useState(0);
+  const theme = useTheme();
 
   useEffect(() => {
     loadNote(noteId);
   }, [noteId, loadNote]);
+
+  // Pick up edits made to this note inside Obsidian. Only refresh while the user is
+  // NOT typing in this note's editor, so we never clobber in-progress input.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const editingHere = document.activeElement?.classList.contains('note-editable');
+      if (!editingHere) pullExternal();
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [pullExternal]);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -128,12 +142,19 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     }
   }, [handleClose, showDeleteModal]);
 
+  // In dark mode each note keeps its hue but becomes a dark, pastel-tinted surface.
+  const displayColor = useMemo(() => {
+    if (!note) return theme === 'dark' ? '#26262e' : '#fff9c4';
+    return theme === 'dark' ? toDarkPastel(note.color) : note.color;
+  }, [note?.color, theme]);
+
   const titlebarColor = useMemo(() => {
-    if (!note) return '#fff9c4';
-    return darkenColor(note.color, 0.02);
-  }, [note?.color]);
+    if (!note) return displayColor;
+    return theme === 'dark' ? lightenColor(displayColor, 0.04) : darkenColor(note.color, 0.02);
+  }, [note?.color, theme, displayColor]);
 
   const currentFont = NOTE_FONTS[fontIndex].value;
+  const isDarkBg = isDarkColor(displayColor);
 
   if (isLoading) {
     return (
@@ -154,9 +175,9 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   return (
     <>
       <motion.div
-        className={`note-window ${isDragging ? 'dragging' : ''}`}
+        className={`note-window ${isDragging ? 'dragging' : ''} ${isDarkBg ? 'note-dark-bg' : ''}`}
         style={{
-          backgroundColor: note.color,
+          backgroundColor: displayColor,
           '--note-rotation': `${rotation}deg`,
           '--note-font': currentFont,
           perspective: 1200,
@@ -233,6 +254,33 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             >
               <span className="font-btn-label" style={{ fontFamily: currentFont }}>Aa</span>
             </button>
+
+            <button
+              className="titlebar-btn theme-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTheme();
+              }}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4.5" />
+                  <line x1="12" y1="2" x2="12" y2="4" />
+                  <line x1="12" y1="20" x2="12" y2="22" />
+                  <line x1="2" y1="12" x2="4" y2="12" />
+                  <line x1="20" y1="12" x2="22" y2="12" />
+                  <line x1="4.9" y1="4.9" x2="6.3" y2="6.3" />
+                  <line x1="17.7" y1="17.7" x2="19.1" y2="19.1" />
+                  <line x1="4.9" y1="19.1" x2="6.3" y2="17.7" />
+                  <line x1="17.7" y1="6.3" x2="19.1" y2="4.9" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
           </div>
 
           {/* RIGHT: new note, minimize, delete, close */}
@@ -293,6 +341,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             content={note.content}
             highlighterColor={highlighterColor}
             onContentChange={setContent}
+            onBlur={save}
             font={currentFont}
           />
           <div className="highlighter-sidebar">

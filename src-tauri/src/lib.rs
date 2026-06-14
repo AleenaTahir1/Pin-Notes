@@ -1,22 +1,38 @@
 mod commands;
 mod hotkey;
+mod settings;
 mod storage;
+mod sync;
 mod tray;
 mod window;
 
 use commands::*;
+use settings::SettingsStore;
 use storage::NotesStorage;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Single-instance MUST be the first plugin registered. It guarantees that
+        // launching Pin Notes again (shortcut, autostart, updater relaunch) routes
+        // back to the already-running process instead of spawning a second one —
+        // which is what was stacking up duplicate icons in the system tray.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // A second launch happened — just surface the existing notes list
+            // instead of starting a new instance.
+            if let Err(e) = window::create_notes_list_window(app) {
+                eprintln!("Failed to focus notes list on second launch: {}", e);
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(NotesStorage::new())
+        .manage(SettingsStore::new())
         .invoke_handler(tauri::generate_handler![
             create_note,
             update_note,
@@ -31,6 +47,10 @@ pub fn run() {
             close_note,
             toggle_pin_note,
             show_all_notes,
+            set_obsidian_vault,
+            disconnect_obsidian,
+            get_sync_status,
+            sync_obsidian_now,
         ])
         .setup(|app| {
             // Set up system tray
@@ -51,6 +71,21 @@ pub fn run() {
             // Restore previously visible notes
             if let Err(e) = window::restore_all_notes(app.handle()) {
                 eprintln!("Failed to restore notes: {}", e);
+            }
+
+            // Background Obsidian sync: every few seconds reconcile storage with the
+            // connected vault (no-op when no vault is configured). This is what pulls
+            // edits made inside Obsidian back into Pin Notes.
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                    let settings = handle.state::<SettingsStore>();
+                    if let Some(vault) = settings.vault_path() {
+                        let storage = handle.state::<NotesStorage>();
+                        sync::sync_once(&storage, std::path::Path::new(&vault));
+                    }
+                });
             }
 
             // If no notes exist yet, create one on first run

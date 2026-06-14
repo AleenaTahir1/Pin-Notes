@@ -12,6 +12,10 @@ Pin notes to your desktop — always on top, always within reach.
 [![Build](https://img.shields.io/github/actions/workflow/status/AleenaTahir1/Pin-Notes/ci.yml)](https://github.com/AleenaTahir1/Pin-Notes/actions)
 [![License](https://img.shields.io/badge/license-Source%20Available-blue)](LICENSE.txt)
 
+<br/>
+
+<img src="Pin-Note_v1.gif" alt="PinNotes demo" width="640" />
+
 </div>
 
 ---
@@ -43,6 +47,8 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 ## Features
 
 - **Always on top** — Floating notes that stay visible over all other windows
+- **Obsidian sync** — Two-way sync with an Obsidian vault: edit notes in either app
+- **Dark mode** — Pastel-tinted dark theme with one-click toggle, synced across all notes
 - **Notes list panel** — Browse, search, and pin-to-top your favorite notes
 - **Rich highlighting** — 5 highlighter colors (yellow, pink, green, blue, purple)
 - **Multiple note colors** — 8 pastel themes to color-code your notes
@@ -60,8 +66,7 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 
 Download the latest release from the [Releases](https://github.com/AleenaTahir1/Pin-Notes/releases) page:
 
-- **`.msi`** — Standard Windows installer (recommended)
-- **`.exe`** — NSIS installer
+- **`.exe`** — Windows installer (NSIS). Installs in place and supports auto-updates.
 
 ---
 
@@ -92,6 +97,20 @@ Right-click the tray icon for quick actions:
 | **Notes List** | Open the notes list panel |
 | **Show All** | Bring all notes to the front |
 | **Quit** | Close PinNotes |
+
+### Dark Mode
+
+Click the **sun/moon** icon in the notes-list header (or on any note's titlebar) to toggle dark mode. Your choice is saved and applies to every open note instantly.
+
+### Obsidian Sync
+
+Keep your notes in sync with an Obsidian vault — edit them in PinNotes **or** Obsidian.
+
+1. Open the **notes list** and click the **link (chain)** icon in the header.
+2. Pick a folder inside your vault (e.g. `YourVault\PinNotes`). The icon turns purple when sync is on.
+3. That's it — edits flow both ways automatically. Each note becomes a `.md` file with front-matter; new `.md` files you add in Obsidian become notes.
+
+To stop, click the **unlink** icon (your `.md` files are kept). Notes: conflicts resolve last-write-wins, and deleting is one-way (delete in PinNotes to remove a note for good). See [OBSIDIAN_INTEGRATION.md](OBSIDIAN_INTEGRATION.md) for details.
 
 ---
 
@@ -141,6 +160,8 @@ PinNotes/
 │       ├── lib.rs          # App setup and plugin registration
 │       ├── commands.rs     # Tauri IPC command handlers
 │       ├── storage.rs      # JSON file persistence
+│       ├── settings.rs     # Persisted settings (Obsidian vault path)
+│       ├── sync.rs         # Two-way Obsidian (Markdown) sync engine
 │       ├── window.rs       # Frameless window creation
 │       ├── hotkey.rs       # Global shortcut registration
 │       └── tray.rs         # System tray menu

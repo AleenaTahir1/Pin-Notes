@@ -29,7 +29,7 @@ PinNotes is a Windows sticky notes app built with **Tauri 2.0** (Rust backend + 
 - `commands.rs` — IPC command handlers (`create_note`, `update_note`, `delete_note`, `get_notes`, etc.)
 - `storage.rs` — JSON file persistence with `Mutex<NotesStorage>` managed state
 - `window.rs` — Creates frameless, transparent, always-on-top windows for notes and the notes list
-- `hotkey.rs` — Global shortcut registration (Alt+Shift+N)
+- `hotkey.rs` — Global shortcut registration (Ctrl+Alt+P = new note, Ctrl+Alt+L = notes list)
 - `tray.rs` — System tray with menu (New Note, Notes List, Show All, Quit)
 
 ### Data Flow

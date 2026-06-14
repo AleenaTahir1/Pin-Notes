@@ -2,18 +2,36 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { open } from '@tauri-apps/plugin-dialog';
 import { Note } from '../types';
 import { UpdateChecker } from './UpdateChecker';
+import { useTheme, toggleTheme } from '../store/theme';
 
 export function NotesList() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [search, setSearch] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
+  const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const theme = useTheme();
 
-  // Set opaque background so no gaps show at window edges
+  // Load whether an Obsidian vault is connected
   useEffect(() => {
-    document.documentElement.style.background = '#e4e4e4';
-    document.body.style.background = '#e4e4e4';
+    invoke<string | null>('get_sync_status')
+      .then(setVaultPath)
+      .catch(() => {});
   }, []);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  // Set opaque background so no gaps show at window edges (theme-aware)
+  useEffect(() => {
+    const bg = theme === 'dark' ? '#0e0e0f' : '#e4e4e4';
+    document.documentElement.style.background = bg;
+    document.body.style.background = bg;
+  }, [theme]);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -71,9 +89,9 @@ export function NotesList() {
         positionX: 200,
         positionY: 200,
       });
-      // Hide the dashboard after creating a note
+      // Minimize the list after creating a note — don't close it, so it stays one click away
       const win = getCurrentWindow();
-      await win.close();
+      await win.minimize();
     } catch (error) {
       console.error('[Pin Notes] Failed to create note:', error);
     }
@@ -102,6 +120,33 @@ export function NotesList() {
       loadNotes();
     } catch (error) {
       console.error('[Pin Notes] Failed to toggle pin:', error);
+    }
+  };
+
+  const handleConnectObsidian = async () => {
+    try {
+      const dir = await open({
+        directory: true,
+        title: 'Choose your Obsidian vault folder (notes sync both ways)',
+      });
+      if (typeof dir !== 'string') return; // cancelled
+      const count = await invoke<number>('set_obsidian_vault', { dir });
+      setVaultPath(dir);
+      loadNotes();
+      showToast(`Synced ${count} note${count === 1 ? '' : 's'} — editing now works both ways`);
+    } catch (error) {
+      console.error('[Pin Notes] Failed to connect Obsidian vault:', error);
+      showToast('Could not connect vault — see console');
+    }
+  };
+
+  const handleDisconnectObsidian = async () => {
+    try {
+      await invoke('disconnect_obsidian');
+      setVaultPath(null);
+      showToast('Disconnected from Obsidian (files kept)');
+    } catch (error) {
+      console.error('[Pin Notes] Failed to disconnect:', error);
     }
   };
 
@@ -165,6 +210,53 @@ export function NotesList() {
       <div className="notes-list-header" onMouseDown={handleDrag}>
         <span className="notes-list-title">Notes</span>
         <div className="notes-list-actions">
+          <motion.button
+            className={`notes-list-theme-btn obsidian-btn ${vaultPath ? 'connected' : ''}`}
+            onClick={vaultPath ? handleDisconnectObsidian : handleConnectObsidian}
+            title={vaultPath ? 'Disconnect from Obsidian' : 'Connect to Obsidian'}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            {vaultPath ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+                <path d="M15 7h2a5 5 0 0 1 0 10h-2" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+                <line x1="3" y1="3" x2="21" y2="21" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+                <path d="M15 7h2a5 5 0 0 1 0 10h-2" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+              </svg>
+            )}
+          </motion.button>
+          <motion.button
+            className="notes-list-theme-btn"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            {theme === 'dark' ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="4.5" />
+                <line x1="12" y1="2" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="22" />
+                <line x1="2" y1="12" x2="4" y2="12" />
+                <line x1="20" y1="12" x2="22" y2="12" />
+                <line x1="4.9" y1="4.9" x2="6.3" y2="6.3" />
+                <line x1="17.7" y1="17.7" x2="19.1" y2="19.1" />
+                <line x1="4.9" y1="19.1" x2="6.3" y2="17.7" />
+                <line x1="17.7" y1="6.3" x2="19.1" y2="4.9" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </motion.button>
           <motion.button
             className="notes-list-add-btn"
             onClick={handleNewNote}
@@ -311,6 +403,19 @@ export function NotesList() {
           </AnimatePresence>
         )}
       </div>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className="notes-list-toast"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.2 }}
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <UpdateChecker />
     </div>
   );

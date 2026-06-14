@@ -5,6 +5,7 @@ interface NoteEditorProps {
   content: string;
   highlighterColor: HighlighterColor | null;
   onContentChange: (content: string) => void;
+  onBlur?: () => void;
   font?: string;
 }
 
@@ -91,6 +92,7 @@ export function NoteEditor({
   content,
   highlighterColor,
   onContentChange,
+  onBlur,
   font,
 }: NoteEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -271,6 +273,7 @@ export function NoteEditor({
         onMouseUp={handleHighlight}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
+        onBlur={onBlur}
         data-placeholder="Write something..."
         spellCheck={false}
         suppressContentEditableWarning

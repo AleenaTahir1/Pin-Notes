@@ -20,6 +20,8 @@
     "positioner:default",
     "updater:default",
     "process:allow-restart",
-    "process:allow-exit"
+    "process:allow-exit",
+    "dialog:default",
+    "dialog:allow-open"
   ]
 }

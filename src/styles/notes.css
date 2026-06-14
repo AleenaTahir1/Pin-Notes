@@ -630,7 +630,8 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 12px 14px;
   background: #e4e4e4;
   cursor: grab;
   -webkit-app-region: drag;
@@ -644,16 +645,29 @@ html, body, #root {
 
 .notes-list-title {
   font-family: var(--font-hand);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-dark);
   text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .notes-list-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+/* Compact, uniform header buttons so the row never overlaps the title */
+.notes-list-add-btn,
+.notes-list-close-btn,
+.notes-list-minimize-btn,
+.notes-list-theme-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
 }
 
 .notes-list-add-btn {
@@ -1085,6 +1099,323 @@ html, body, #root {
   background: #4caf50;
   border-radius: 3px;
   transition: width 0.3s ease;
+}
+
+/* ===== Dark-background notes (pure black, or dark-mode notes) — keep text legible ===== */
+.note-window.note-dark-bg .note-editable {
+  color: #f1f1f5;
+}
+.note-window.note-dark-bg .note-editable:empty::before {
+  color: rgba(255, 255, 255, 0.45);
+}
+.note-window.note-dark-bg .note-titlebar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.note-window.note-dark-bg .titlebar-btn {
+  color: #d4d4dc;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    1px 1px 3px rgba(0, 0, 0, 0.45),
+    -1px -1px 3px rgba(255, 255, 255, 0.06);
+}
+.note-window.note-dark-bg .titlebar-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+}
+.note-window.note-dark-bg .resize-handle::after {
+  background:
+    linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.3) 30%, rgba(255, 255, 255, 0.3) 50%, transparent 50%),
+    linear-gradient(135deg, transparent 60%, rgba(255, 255, 255, 0.3) 60%, rgba(255, 255, 255, 0.3) 80%, transparent 80%);
+}
+
+/* ===== Toast (export feedback) ===== */
+.notes-list-toast {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  padding: 9px 14px;
+  background: rgba(40, 40, 48, 0.95);
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 14px;
+  line-height: 1.3;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  z-index: 500;
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+}
+
+/* =====================================================================
+   DARK MODE  —  dark surfaces, light text, pastel accents preserved
+   Toggled via [data-theme="dark"] on <html> (see src/store/theme.ts)
+   ===================================================================== */
+[data-theme="dark"] {
+  /* Light text on near-black surfaces */
+  --text-dark: #f1f1f5;
+  --text-mid: #bcbcc8;
+  --text-light: #8c8c9a;
+
+  /* Neumorphic surface + shadow pair — true dark, almost black */
+  --nm-surface: #181819;
+  --nm-shadow-dark: #050506;
+  --nm-shadow-light: #242427;
+
+  --shadow-note: 0 4px 12px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lifted: 0 12px 36px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.55);
+}
+
+/* --- Note window chrome --- */
+[data-theme="dark"] .note-titlebar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .titlebar-btn {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    1px 1px 3px rgba(0, 0, 0, 0.4),
+    -1px -1px 3px rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .titlebar-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.45),
+    -2px -2px 4px rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .titlebar-btn.menu-btn:hover,
+[data-theme="dark"] .titlebar-btn.minimize-btn:hover,
+[data-theme="dark"] .titlebar-btn.font-btn:hover,
+[data-theme="dark"] .titlebar-btn.theme-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"] .note-content {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .resize-handle::after {
+  background:
+    linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.25) 30%, rgba(255, 255, 255, 0.25) 50%, transparent 50%),
+    linear-gradient(135deg, transparent 60%, rgba(255, 255, 255, 0.25) 60%, rgba(255, 255, 255, 0.25) 80%, transparent 80%);
+}
+
+/* --- Color picker popover --- */
+[data-theme="dark"] .color-picker,
+[data-theme="dark"] .color-picker::before {
+  background: #2a2a32;
+}
+[data-theme="dark"] .color-picker {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Highlighter popovers --- */
+[data-theme="dark"] .highlighter-picker {
+  background: #2a2a32;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .highlighter-sidebar {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    2px 2px 5px rgba(0, 0, 0, 0.4),
+    -2px -2px 5px rgba(255, 255, 255, 0.05);
+}
+
+/* --- Delete / clear modal --- */
+[data-theme="dark"] .delete-modal {
+  background: #2a2a32;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+[data-theme="dark"] .delete-modal-btn.cancel {
+  background: #33333d;
+  color: var(--text-mid);
+}
+[data-theme="dark"] .delete-modal-btn.confirm {
+  background: rgba(211, 47, 47, 0.22);
+  color: #ff8a80;
+}
+[data-theme="dark"] .delete-modal-btn.confirm:hover {
+  background: rgba(211, 47, 47, 0.35);
+}
+[data-theme="dark"] .delete-modal-btn {
+  box-shadow:
+    3px 3px 6px rgba(0, 0, 0, 0.4),
+    -3px -3px 6px rgba(255, 255, 255, 0.04);
+}
+
+/* --- Notes list window (neumorphic surfaces) --- */
+[data-theme="dark"] .notes-list-window {
+  background: #0e0e0f;
+}
+[data-theme="dark"] .notes-list-header {
+  background: #0e0e0f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .notes-list-title {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .notes-list-add-btn,
+[data-theme="dark"] .notes-list-close-btn,
+[data-theme="dark"] .notes-list-minimize-btn,
+[data-theme="dark"] .notes-list-theme-btn,
+[data-theme="dark"] .notes-list-item,
+[data-theme="dark"] .notes-list-item-delete {
+  background: var(--nm-surface);
+  box-shadow:
+    5px 5px 10px var(--nm-shadow-dark),
+    -5px -5px 10px var(--nm-shadow-light);
+}
+[data-theme="dark"] .notes-list-item-delete {
+  box-shadow:
+    3px 3px 6px var(--nm-shadow-dark),
+    -3px -3px 6px var(--nm-shadow-light);
+}
+
+[data-theme="dark"] .notes-list-add-btn:hover,
+[data-theme="dark"] .notes-list-close-btn:hover,
+[data-theme="dark"] .notes-list-minimize-btn:hover,
+[data-theme="dark"] .notes-list-theme-btn:hover,
+[data-theme="dark"] .notes-list-item:hover {
+  box-shadow:
+    7px 7px 14px var(--nm-shadow-dark),
+    -7px -7px 14px var(--nm-shadow-light);
+}
+
+[data-theme="dark"] .notes-list-add-btn:active,
+[data-theme="dark"] .notes-list-close-btn:active,
+[data-theme="dark"] .notes-list-minimize-btn:active,
+[data-theme="dark"] .notes-list-theme-btn:active,
+[data-theme="dark"] .notes-list-item:active,
+[data-theme="dark"] .notes-list-item-delete:hover {
+  box-shadow:
+    inset 3px 3px 6px var(--nm-shadow-dark),
+    inset -3px -3px 6px var(--nm-shadow-light);
+}
+
+[data-theme="dark"] .notes-list-item.pinned {
+  box-shadow:
+    5px 5px 10px var(--nm-shadow-dark),
+    -5px -5px 10px var(--nm-shadow-light),
+    0 0 0 1px rgba(239, 83, 80, 0.3);
+}
+
+/* Cleaner cards: a hairline edge for definition, and a much subtler color glow so
+   notes don't look muddy/olive on black. The 4px color strip still IDs each note. */
+[data-theme="dark"] .notes-list-item {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .notes-list-item::before {
+  opacity: 0.18;
+  width: 42%;
+}
+[data-theme="dark"] .notes-list-item:hover::before {
+  opacity: 0.26;
+}
+[data-theme="dark"] .notes-list-item-preview {
+  font-weight: 500;
+}
+
+/* Pin icon needs to read clearly against the dark card */
+[data-theme="dark"] .notes-list-item-pin {
+  color: #c2c2cf;
+}
+[data-theme="dark"] .notes-list-item-pin:hover {
+  color: #ffffff;
+}
+[data-theme="dark"] .notes-list-item-pin.pinned,
+[data-theme="dark"] .notes-list-pin-label {
+  color: #ff7a7a;
+}
+
+[data-theme="dark"] .notes-list-search-bar {
+  background: var(--nm-surface);
+  box-shadow:
+    inset 3px 3px 6px var(--nm-shadow-dark),
+    inset -3px -3px 6px var(--nm-shadow-light);
+}
+[data-theme="dark"] .notes-list-search-clear {
+  background: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .notes-list-search-clear:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* --- Update banner --- */
+[data-theme="dark"] .update-banner {
+  background: var(--nm-surface);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .update-btn {
+  background: var(--nm-surface);
+  color: #81c784;
+  box-shadow:
+    3px 3px 6px var(--nm-shadow-dark),
+    -3px -3px 6px var(--nm-shadow-light);
+}
+[data-theme="dark"] .update-btn:hover {
+  box-shadow:
+    4px 4px 8px var(--nm-shadow-dark),
+    -4px -4px 8px var(--nm-shadow-light);
+}
+[data-theme="dark"] .update-btn:active {
+  box-shadow:
+    inset 2px 2px 4px var(--nm-shadow-dark),
+    inset -2px -2px 4px var(--nm-shadow-light);
+}
+[data-theme="dark"] .update-progress-bar {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* --- Scrollbars --- */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* The theme toggle button in the notes list shares the neumorphic look */
+.notes-list-theme-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: #e4e4e4;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  box-shadow:
+    5px 5px 10px #bebebe,
+    -5px -5px 10px #ffffff;
+  transition: box-shadow 0.2s ease, color 0.15s;
+}
+
+.notes-list-theme-btn:hover {
+  color: var(--text-dark);
+  box-shadow:
+    6px 6px 12px #bebebe,
+    -6px -6px 12px #ffffff;
+}
+
+.notes-list-theme-btn:active {
+  box-shadow:
+    inset 3px 3px 6px #bebebe,
+    inset -3px -3px 6px #ffffff;
+}
+
+/* Obsidian button turns purple when a vault is connected (two-way sync active) */
+.obsidian-btn.connected {
+  color: #7c5cff;
+}
+[data-theme="dark"] .obsidian-btn.connected {
+  color: #a892ff;
 }
 
 /* ===== Utility ===== */
