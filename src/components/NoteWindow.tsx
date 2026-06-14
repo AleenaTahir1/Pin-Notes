@@ -47,15 +47,34 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     loadNote(noteId);
   }, [noteId, loadNote]);
 
+  // Only poll for external (Obsidian) edits when a vault is actually connected.
+  // When it isn't (the common case) nothing external changes the note, so we skip
+  // the per-window polling entirely to save CPU/battery.
+  const [syncing, setSyncing] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const check = () =>
+      invoke<string | null>('get_sync_status')
+        .then((v) => active && setSyncing(!!v))
+        .catch(() => {});
+    check();
+    const id = setInterval(check, 20000); // re-check vault status occasionally (cheap)
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, []);
+
   // Pick up edits made to this note inside Obsidian. Only refresh while the user is
   // NOT typing in this note's editor, so we never clobber in-progress input.
   useEffect(() => {
+    if (!syncing) return;
     const interval = setInterval(() => {
       const editingHere = document.activeElement?.classList.contains('note-editable');
       if (!editingHere) pullExternal();
-    }, 2500);
+    }, 3000);
     return () => clearInterval(interval);
-  }, [pullExternal]);
+  }, [syncing, pullExternal]);
 
   useEffect(() => {
     const handleClickOutside = () => {

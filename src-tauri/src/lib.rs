@@ -104,10 +104,14 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                // Prevent the app from exiting when all windows are closed.
-                // The app stays alive in the system tray so global shortcuts still work.
-                api.prevent_exit();
+            if let tauri::RunEvent::ExitRequested { code, api, .. } = event {
+                // Keep the app alive in the tray ONLY when it's the windows closing
+                // (code == None) — so global shortcuts keep working. An explicit Quit
+                // from the tray calls `app.exit(0)`, which sets code == Some(0); in that
+                // case we must let the app actually exit.
+                if code.is_none() {
+                    api.prevent_exit();
+                }
             }
         });
 }
