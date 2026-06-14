@@ -1,6 +1,6 @@
 [package]
 name = "pin-notes"
-version = "1.0.3"
+version = "1.0.4"
 description = "Floating sticky notes app - fast, local, no account required"
 authors = ["you"]
 edition = "2021"
