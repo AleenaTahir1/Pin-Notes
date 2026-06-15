@@ -18,6 +18,12 @@ pub struct Note {
     pub is_visible: bool,
     #[serde(default)]
     pub is_pinned: bool,
+    /// Remembered font family for this note (CSS value). Empty = app default.
+    #[serde(default)]
+    pub font: String,
+    /// Remembered text size in px for this note. 0 = app default.
+    #[serde(default)]
+    pub font_size: u32,
 }
 
 impl Note {
@@ -35,6 +41,8 @@ impl Note {
             updated_at: now,
             is_visible: true,
             is_pinned: false,
+            font: String::new(),
+            font_size: 0,
         }
     }
 }

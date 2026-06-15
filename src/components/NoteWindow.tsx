@@ -6,7 +6,7 @@ import { useNoteStore } from '../store/noteStore';
 import { NoteEditor } from './NoteEditor';
 import { ColorPicker } from './ColorPicker';
 import { DeleteModal } from './DeleteModal';
-import { NOTE_FONTS, HIGHLIGHTER_COLORS, HighlighterColor, toDarkPastel, lightenColor, isDarkColor } from '../types';
+import { NOTE_FONTS, HIGHLIGHTER_COLORS, HighlighterColor, toDarkPastel, lightenColor, isDarkColor, DEFAULT_FONT_SIZE, FONT_SIZE_STEP, clampFontSize } from '../types';
 import { useTheme, toggleTheme } from '../store/theme';
 
 const HIGHLIGHTER_DISPLAY: Record<HighlighterColor, string> = {
@@ -30,6 +30,8 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     loadNote,
     setContent,
     setColor,
+    setFont,
+    setFontSize,
     setHighlighterColor,
     closeNote,
     clearNote,
@@ -40,8 +42,14 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [fontIndex, setFontIndex] = useState(0);
   const theme = useTheme();
+
+  // The note remembers its own font; derive the index from the stored value so it
+  // restores on reopen. Falls back to the first font when unset/unknown.
+  const fontIndex = useMemo(() => {
+    const i = NOTE_FONTS.findIndex((f) => f.value === note?.font);
+    return i >= 0 ? i : 0;
+  }, [note?.font]);
 
   useEffect(() => {
     loadNote(noteId);
@@ -134,8 +142,18 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   }, []);
 
   const handleCycleFont = useCallback(() => {
-    setFontIndex((prev) => (prev + 1) % NOTE_FONTS.length);
-  }, []);
+    const next = (fontIndex + 1) % NOTE_FONTS.length;
+    setFont(NOTE_FONTS[next].value);
+  }, [fontIndex, setFont]);
+
+  // Per-note text size (persisted via note.font_size).
+  const fontSize = note?.font_size && note.font_size > 0 ? note.font_size : DEFAULT_FONT_SIZE;
+  const handleDecreaseFont = useCallback(() => {
+    setFontSize(clampFontSize(fontSize - FONT_SIZE_STEP));
+  }, [fontSize, setFontSize]);
+  const handleIncreaseFont = useCallback(() => {
+    setFontSize(clampFontSize(fontSize + FONT_SIZE_STEP));
+  }, [fontSize, setFontSize]);
 
   const handleDeleteClick = useCallback(() => {
     setShowDeleteModal(true);
@@ -275,6 +293,28 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             </button>
 
             <button
+              className="titlebar-btn font-size-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDecreaseFont();
+              }}
+              title="Smaller text"
+            >
+              <span className="font-size-label small">A</span>
+            </button>
+
+            <button
+              className="titlebar-btn font-size-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleIncreaseFont();
+              }}
+              title="Larger text"
+            >
+              <span className="font-size-label large">A</span>
+            </button>
+
+            <button
               className="titlebar-btn theme-btn"
               onClick={(e) => {
                 e.stopPropagation();
@@ -362,6 +402,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             onContentChange={setContent}
             onBlur={save}
             font={currentFont}
+            fontSize={fontSize}
           />
           <div className="highlighter-sidebar">
             {(Object.keys(HIGHLIGHTER_COLORS) as HighlighterColor[]).map((color) => (

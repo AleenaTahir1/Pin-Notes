@@ -10,9 +10,25 @@ export interface Note {
   updated_at: number;
   is_visible: boolean;
   is_pinned: boolean;
+  // Remembered font for this note (one of NOTE_FONTS[].value). Empty/undefined = default.
+  font?: string;
+  // Remembered text size in px. 0/undefined = default (DEFAULT_FONT_SIZE).
+  font_size?: number;
 }
 
-// Sticky note colors — airy soft pastels, plus a pure-black option
+// Per-note text size controls (the A− / A+ buttons on a note).
+export const DEFAULT_FONT_SIZE = 18;
+export const MIN_FONT_SIZE = 12;
+export const MAX_FONT_SIZE = 32;
+export const FONT_SIZE_STEP = 2;
+
+export function clampFontSize(px: number): number {
+  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, px));
+}
+
+// Sticky note colors — airy soft pastels. These same hues tint the surface in dark
+// mode (see toDarkPastel), so there's no separate "black" swatch: use the dark-mode
+// toggle for a dark note instead.
 export const NOTE_COLORS = {
   buttercream: '#fff9c4',
   blush: '#fff0f5',
@@ -21,7 +37,7 @@ export const NOTE_COLORS = {
   lilac: '#f5eeff',
   peach: '#fff5eb',
   bubblegum: '#ffe8f5',
-  black: '#000000',
+  seafoam: '#e1f7f2',
 } as const;
 
 export type NoteColor = keyof typeof NOTE_COLORS;
@@ -125,9 +141,11 @@ export function toDarkPastel(hex: string): string {
   const r = (num >> 16) & 0xff;
   const g = (num >> 8) & 0xff;
   const b = num & 0xff;
-  // Near-black base; keep ~16% of the pastel for a subtle colored tint.
+  // Dark anthracite base; keep ~22% of the pastel so the chosen hue is clearly
+  // visible while the surface still reads as dark — a buttercream note becomes warm
+  // dark grey, a sky note a cold blue-ish anthracite ("dark mode with pastels").
   const base = { r: 0x1c, g: 0x1c, b: 0x20 };
-  const keep = 0.16;
+  const keep = 0.22;
   const mix = (c: number, bse: number) => Math.round(bse * (1 - keep) + c * keep);
   const dr = mix(r, base.r);
   const dg = mix(g, base.g);

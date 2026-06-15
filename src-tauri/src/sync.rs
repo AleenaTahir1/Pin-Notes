@@ -315,6 +315,8 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                         updated_at: now(),
                         is_visible: false,
                         is_pinned: parsed.pinned,
+                        font: String::new(),
+                        font_size: 0,
                     };
                     if storage.create_note(new).is_ok() {
                         changed = true;
@@ -337,6 +339,8 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                     updated_at: now(),
                     is_visible: false,
                     is_pinned: parsed.pinned,
+                    font: String::new(),
+                    font_size: 0,
                 };
                 if storage.create_note(note.clone()).is_ok() {
                     let _ = fs::remove_file(path); // old untracked name

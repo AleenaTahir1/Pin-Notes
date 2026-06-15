@@ -261,6 +261,19 @@ html, body, #root {
   pointer-events: none;
 }
 
+/* Text-size stepper buttons (A− / A+) — slightly narrower to save titlebar room */
+.titlebar-btn.font-size-btn {
+  width: 20px;
+}
+.font-size-label {
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+  pointer-events: none;
+}
+.font-size-label.small { font-size: 9px; }
+.font-size-label.large { font-size: 13px; }
+
 /* ===== Color Picker ===== */
 .color-picker {
   position: absolute;
@@ -472,6 +485,85 @@ html, body, #root {
 .note-editable .hl-green { background: rgba(165, 214, 167, 0.45); padding: 0 1px; border-radius: 2px; }
 .note-editable .hl-blue { background: rgba(144, 202, 249, 0.45); padding: 0 1px; border-radius: 2px; }
 .note-editable .hl-purple { background: rgba(206, 147, 216, 0.45); padding: 0 1px; border-radius: 2px; }
+
+/* Basic markdown formatting (round-trips to Obsidian) */
+.note-editable strong { font-weight: 700; }
+.note-editable em { font-style: italic; }
+.note-editable s { opacity: 0.65; }
+.note-editable code {
+  font-family: 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.88em;
+  background: rgba(0, 0, 0, 0.07);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+.note-editable .md-h1,
+.note-editable .md-h2,
+.note-editable .md-h3,
+.note-editable .md-h4,
+.note-editable .md-h5,
+.note-editable .md-h6 {
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 2px 0;
+}
+.note-editable .md-h1 { font-size: 1.55em; }
+.note-editable .md-h2 { font-size: 1.32em; }
+.note-editable .md-h3 { font-size: 1.16em; }
+.note-editable .md-h4 { font-size: 1.05em; }
+.note-editable .md-h5 { font-size: 0.95em; text-transform: uppercase; letter-spacing: 0.04em; }
+.note-editable .md-h6 { font-size: 0.9em; opacity: 0.8; }
+
+/* Blockquote */
+.note-editable .md-quote {
+  border-left: 3px solid rgba(0, 0, 0, 0.25);
+  padding-left: 8px;
+  margin: 1px 0;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+/* Bullet list */
+.note-editable .md-li {
+  padding-left: 1.25em;
+  position: relative;
+}
+.note-editable .md-li::before {
+  content: '•';
+  position: absolute;
+  left: 0.35em;
+  opacity: 0.7;
+}
+
+/* Task list (interactive checkbox) */
+.note-editable .md-task {
+  padding-left: 0.1em;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.note-editable .md-check {
+  flex: 0 0 auto;
+  cursor: pointer;
+  user-select: none;
+  font-size: 1.05em;
+  line-height: 1;
+}
+.note-editable .md-check::before { content: '☐'; }
+.note-editable .md-check[data-checked="true"]::before { content: '☑'; }
+.note-editable .md-task:has(.md-check[data-checked="true"]) .md-li-body {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+.note-editable .md-li-body { flex: 1 1 auto; min-width: 0; }
+
+/* Markdown on dark surfaces — lift the code/quote accents off near-black */
+.note-window.note-dark-bg .note-editable code {
+  background: rgba(255, 255, 255, 0.13);
+}
+.note-window.note-dark-bg .note-editable .md-quote {
+  border-left-color: rgba(255, 255, 255, 0.3);
+}
 
 
 /* ===== Resize Handle ===== */
@@ -931,7 +1023,7 @@ html, body, #root {
 
 .notes-list-item-preview {
   font-family: var(--font-hand);
-  font-size: 15px;
+  font-size: 18px;
   color: var(--text-dark);
   white-space: nowrap;
   overflow: hidden;
@@ -939,9 +1031,14 @@ html, body, #root {
 }
 
 .notes-list-item-date {
-  font-size: 11px;
-  color: var(--text-light);
-  margin-top: 3px;
+  /* Clean, readable font for the timestamp — the handwriting face is kept for the
+     note title/preview above, but it's too hard to read at this small size. */
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: var(--text-mid);
+  margin-top: 5px;
 }
 
 .notes-list-item-delete {

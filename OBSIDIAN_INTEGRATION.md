@@ -16,6 +16,44 @@ flows back into Pin Notes. Implemented in `src-tauri/src/sync.rs` + `settings.rs
 To stop syncing, click the **unlink** button next to it (your `.md` files are kept).
 To change folders, click the Obsidian button again and pick a new one.
 
+## Markdown formatting
+
+Notes are plain Markdown, so what you write in Pin Notes reads cleanly in Obsidian and
+vice-versa. These all render in Pin Notes **and** round-trip back to your vault:
+
+| Markdown | Result |
+|----------|--------|
+| `# Heading` … `###### Heading` | Headings **H1–H6** |
+| `**bold**` | **bold** |
+| `*italic*` or `_italic_` | *italic* |
+| `~~strikethrough~~` | ~~strikethrough~~ |
+| `` `inline code` `` | `inline code` |
+| `> quote` | Blockquote |
+| `- item` (or `* item`) | Bullet list |
+| `- [ ] todo` / `- [x] done` | Task checkbox — **click the box in the note to tick it** |
+| `==text==` | Highlight (see caveat below) |
+
+Type the Markdown in Obsidian and it shows up formatted in Pin Notes after the next sync;
+tick a checkbox in Pin Notes and the `- [x]` updates in your `.md`. Underscores inside
+words (e.g. `my_file_name`) are left alone, so they won't turn into italics.
+
+> **Note:** a note's **font** and **text size** (the `Aa` and `A− / A+` buttons) are a
+> Pin Notes display preference only — they aren't part of Markdown, so they don't appear
+> in the `.md` and don't affect Obsidian.
+
+## Templates from your vault
+
+Pin Notes can use your own Obsidian templates:
+
+1. In your connected vault, create a folder named **`Templates`**.
+2. Drop any `.md` files into it — each becomes a template.
+3. In Pin Notes, click **+** in the notes list → your templates appear under
+   **"From your vault"**. Pick one to start a note pre-filled with that content.
+
+`{{date}}` and `{{time}}` placeholders are filled in with the current date/time when the
+note is created. The `Templates` folder is **ignored by sync** — those files are sources
+for new notes, not notes themselves, so they never turn into sticky notes.
+
 ## What syncs, and when
 
 - **Pin Notes → Obsidian:** every edit (typing, color, pin, clear, delete) writes the

@@ -41,8 +41,11 @@ pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
 pub fn create_notes_list_window(app: &AppHandle) -> Result<(), String> {
     let window_label = "notes-list";
 
-    // If already open, focus it
+    // If already open, bring it back: unminimize (it may be sitting in the taskbar),
+    // show, and focus — clicking "All notes" must always surface the list.
     if let Some(window) = app.get_webview_window(window_label) {
+        let _ = window.unminimize();
+        let _ = window.show();
         let _ = window.set_focus();
         return Ok(());
     }

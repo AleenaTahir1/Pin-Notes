@@ -7,74 +7,175 @@ interface NoteEditorProps {
   onContentChange: (content: string) => void;
   onBlur?: () => void;
   font?: string;
+  fontSize?: number;
 }
 
-// Convert stored =={color}text== markup to HTML for contenteditable display
-// Handles multiline highlights: =={pink}line1\nline2== → <mark>line1<br>line2</mark>
-function markupToHtml(text: string): string {
-  let escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
-  // Match highlights that may span multiple lines (lazy match)
-  escaped = escaped.replace(/==(?:\{(\w+)\})?([\s\S]+?)==/g, (_m, color, content) => {
+// Render one line's inline markdown to HTML: inline code, highlights, bold, italic,
+// strikethrough. Inline code is processed first so its contents aren't reformatted.
+function inlineToHtml(raw: string): string {
+  let s = escapeHtml(raw);
+
+  // Inline code: `code`
+  s = s.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
+  // Colored highlights: =={color}text== (or bare ==text==)
+  s = s.replace(/==(?:\{(\w+)\})?([^\n]+?)==/g, (_m, color, content) => {
     const c = color || 'yellow';
-    const htmlContent = content.replace(/\n/g, '<br>');
-    return `<mark class="hl-${c}">${htmlContent}</mark>`;
+    return `<mark class="hl-${c}">${content}</mark>`;
   });
+  // Bold first (so its ** isn't consumed by the italic pass)
+  s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+  // Strikethrough: ~~text~~
+  s = s.replace(/~~([^~\n]+?)~~/g, '<s>$1</s>');
+  // Italic with * … *
+  s = s.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+  // Italic with _ … _ — only at word boundaries so snake_case is left alone
+  s = s.replace(/(^|[\s(])_([^_\n]+?)_(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
 
-  // Convert remaining newlines (outside highlights) to <br>
-  escaped = escaped.replace(/\n/g, '<br>');
-
-  return escaped;
+  return s;
 }
 
-// Convert contenteditable HTML back to =={color}text== markup for storage
-function htmlToMarkup(element: HTMLElement): string {
-  let result = '';
+// Split any multi-line highlight into one highlight per line, so each line can live in
+// its own block <div> (a <mark> can't span block boundaries in the div-per-line model).
+function splitHighlightsPerLine(text: string): string {
+  return text.replace(/==(\{\w+\})?([\s\S]*?)==/g, (_m, tag, body) => {
+    const t = tag || '';
+    if (!body.includes('\n')) return `==${t}${body}==`;
+    return body
+      .split('\n')
+      .map((p: string) => (p === '' ? '' : `==${t}${p}==`))
+      .join('\n');
+  });
+}
 
-  function walk(node: Node, isFirst: boolean) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      result += node.textContent || '';
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const el = node as HTMLElement;
-      if (el.tagName === 'BR') {
-        result += '\n';
-      } else if (el.tagName === 'MARK') {
-        const cls = el.className;
-        const match = cls.match(/hl-(\w+)/);
-        const color = match ? match[1] : 'yellow';
-        // Walk children to preserve <br> as newlines inside highlights
-        result += `=={${color}}`;
-        Array.from(el.childNodes).forEach((child) => {
-          if (child.nodeType === Node.TEXT_NODE) {
-            result += child.textContent || '';
-          } else if ((child as HTMLElement).tagName === 'BR') {
-            result += '\n';
-          } else {
-            result += child.textContent || '';
-          }
-        });
-        result += '==';
-      } else if (el.tagName === 'DIV') {
-        // Browsers wrap new lines in <div>
-        if (!isFirst && result.length > 0 && !result.endsWith('\n')) {
-          result += '\n';
-        }
-        const children = Array.from(el.childNodes);
-        children.forEach((child, i) => walk(child, i === 0));
-      } else {
-        const children = Array.from(el.childNodes);
-        children.forEach((child, i) => walk(child, isFirst && i === 0));
-      }
-    }
+// Render one stored line to a block <div>. Each line becomes its own block; the markdown
+// markers (#, -, >, [ ]) are not shown but are restored on serialize via blockPrefix.
+function lineToHtml(line: string): string {
+  // Headings # … ######
+  let m = line.match(/^(#{1,6})\s+(.*)$/);
+  if (m) return `<div class="md-h${m[1].length}">${inlineToHtml(m[2]) || '<br>'}</div>`;
+
+  // Task list item: - [ ] / - [x]
+  m = line.match(/^[-*]\s+\[([ xX])\]\s*(.*)$/);
+  if (m) {
+    const checked = m[1].toLowerCase() === 'x';
+    const inner = inlineToHtml(m[2]) || '<br>';
+    return (
+      `<div class="md-task">` +
+      `<span class="md-check" contenteditable="false" data-checked="${checked}"></span>` +
+      `<span class="md-li-body">${inner}</span>` +
+      `</div>`
+    );
   }
 
-  const children = Array.from(element.childNodes);
-  children.forEach((child, i) => walk(child, i === 0));
+  // Bullet list item: - … / * …
+  m = line.match(/^[-*]\s+(.*)$/);
+  if (m) return `<div class="md-li">${inlineToHtml(m[1]) || '<br>'}</div>`;
 
-  return result;
+  // Blockquote: > …
+  m = line.match(/^>\s?(.*)$/);
+  if (m) return `<div class="md-quote">${inlineToHtml(m[1]) || '<br>'}</div>`;
+
+  const inner = inlineToHtml(line);
+  return `<div>${inner === '' ? '<br>' : inner}</div>`;
+}
+
+// Convert stored markup to HTML for the contenteditable (one block <div> per line).
+function markupToHtml(text: string): string {
+  if (text === '') return '';
+  return splitHighlightsPerLine(text).split('\n').map(lineToHtml).join('');
+}
+
+// The leading markdown marker a block serializes back to (#, -, > , - [x] …).
+function blockPrefix(el: HTMLElement): string {
+  if (el.classList.contains('md-task')) {
+    const chk = el.querySelector('.md-check');
+    return chk?.getAttribute('data-checked') === 'true' ? '- [x] ' : '- [ ] ';
+  }
+  if (el.classList.contains('md-li')) return '- ';
+  if (el.classList.contains('md-quote')) return '> ';
+  const m = el.className.match(/md-h([1-6])/);
+  return m ? '#'.repeat(Number(m[1])) + ' ' : '';
+}
+
+// Serialize an inline node back to markup (text / mark / bold / italic / strike / code).
+function serializeInlineNode(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+  const el = node as HTMLElement;
+  // The checkbox glyph is rendered chrome, not content — its state lives in blockPrefix.
+  if (el.classList.contains('md-check')) return '';
+  switch (el.tagName) {
+    case 'BR':
+      return '\n';
+    case 'MARK': {
+      const m = el.className.match(/hl-(\w+)/);
+      return `=={${m ? m[1] : 'yellow'}}${serializeChildren(el)}==`;
+    }
+    case 'STRONG':
+    case 'B':
+      return `**${serializeChildren(el)}**`;
+    case 'EM':
+    case 'I':
+      return `*${serializeChildren(el)}*`;
+    case 'S':
+    case 'STRIKE':
+    case 'DEL':
+      return `~~${serializeChildren(el)}~~`;
+    case 'CODE':
+      return `\`${serializeChildren(el)}\``;
+    default:
+      return serializeChildren(el);
+  }
+}
+
+// Serialize an element's children, dropping a trailing lone <br> (the browser's
+// empty-line filler). Mid-content <br>s become newlines.
+function serializeChildren(el: HTMLElement): string {
+  const kids = Array.from(el.childNodes);
+  let s = '';
+  kids.forEach((k, i) => {
+    if (k.nodeType === Node.ELEMENT_NODE && (k as HTMLElement).tagName === 'BR') {
+      if (i !== kids.length - 1) s += '\n';
+    } else {
+      s += serializeInlineNode(k);
+    }
+  });
+  return s;
+}
+
+// One block element (<div>/<p>) = one line.
+function serializeBlock(el: HTMLElement): string {
+  return serializeChildren(el);
+}
+
+// Convert contenteditable HTML back to stored markup (with #/**/* and =={color} markers).
+function htmlToMarkup(element: HTMLElement): string {
+  const lines: string[] = [];
+  const appendInline = (s: string) => {
+    if (lines.length === 0) lines.push('');
+    lines[lines.length - 1] += s;
+  };
+
+  element.childNodes.forEach((child) => {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const el = child as HTMLElement;
+      if (el.tagName === 'DIV' || el.tagName === 'P') {
+        lines.push(blockPrefix(el) + serializeBlock(el));
+      } else if (el.tagName === 'BR') {
+        lines.push('');
+      } else {
+        appendInline(serializeInlineNode(el));
+      }
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      appendInline(child.textContent || '');
+    }
+  });
+
+  return lines.join('\n');
 }
 
 // Check if a node is inside a <mark> element within a container
@@ -94,6 +195,7 @@ export function NoteEditor({
   onContentChange,
   onBlur,
   font,
+  fontSize,
 }: NoteEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
@@ -221,6 +323,15 @@ export function NoteEditor({
     handleInput();
   }, [highlighterColor, handleInput]);
 
+  // Toggle a task checkbox when its glyph is clicked (the span is contenteditable=false).
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const check = (e.target as HTMLElement).closest('.md-check');
+    if (!check) return;
+    const next = check.getAttribute('data-checked') !== 'true';
+    check.setAttribute('data-checked', String(next));
+    handleInput();
+  }, [handleInput]);
+
   // Strip HTML on paste — only allow plain text
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
@@ -230,8 +341,9 @@ export function NoteEditor({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      // Create a real block break (new <div> line) so headings/lines serialize cleanly.
       e.preventDefault();
-      document.execCommand('insertLineBreak');
+      document.execCommand('insertParagraph');
       return;
     }
 
@@ -271,13 +383,17 @@ export function NoteEditor({
         contentEditable
         onInput={handleInput}
         onMouseUp={handleHighlight}
+        onClick={handleClick}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         onBlur={onBlur}
         data-placeholder="Write something..."
         spellCheck={false}
         suppressContentEditableWarning
-        style={font ? { fontFamily: font } : undefined}
+        style={{
+          ...(font ? { fontFamily: font } : {}),
+          ...(fontSize ? { fontSize: `${fontSize}px` } : {}),
+        }}
       />
     </div>
   );

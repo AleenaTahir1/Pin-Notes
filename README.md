@@ -48,12 +48,13 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 
 - **Always on top** — Floating notes that stay visible over all other windows
 - **Obsidian sync** — Two-way sync with an Obsidian vault: edit notes in either app
+- **Markdown formatting** — Headings (H1–H6), **bold**, *italic*, ~~strikethrough~~, `inline code`, blockquotes, bullet lists, and tickable task checkboxes — all round-trip with Obsidian
 - **Templates** — Start notes from 9 built-in templates, or your own templates from your Obsidian vault
 - **Dark mode** — Pastel-tinted dark theme with one-click toggle, synced across all notes
 - **Notes list panel** — Browse, search, and pin-to-top your favorite notes
 - **Rich highlighting** — 5 highlighter colors (yellow, pink, green, blue, purple)
 - **Multiple note colors** — 8 pastel themes to color-code your notes
-- **Font switching** — Choose between Handwriting, Clean, and Mono fonts
+- **Font & text size** — Switch fonts (Handwriting, Clean, Mono) and bump text size up/down — each note remembers its own
 - **System tray** — Quick actions from the tray icon (new note, notes list, show all, quit)
 - **Global shortcuts** — Create notes and open the list from anywhere on your desktop
 - **Auto-save** — Notes save automatically with debounce, no manual saving needed
@@ -103,7 +104,24 @@ Right-click the tray icon for quick actions:
 
 ### Dark Mode
 
-Click the **sun/moon** icon in the notes-list header (or on any note's titlebar) to toggle dark mode. Your choice is saved and applies to every open note instantly.
+Click the **sun/moon** icon in the notes-list header (or on any note's titlebar) to toggle dark mode. Your choice is saved and applies to every open note instantly. In dark mode each note keeps its color as a tint, so a Buttercream note reads as warm dark grey and a Sky note as a cool anthracite.
+
+### Formatting (Markdown)
+
+Notes understand plain Markdown, so anything you write stays readable in Obsidian and vice-versa:
+
+| Type this | Get |
+|-----------|-----|
+| `# Heading` … `###### Heading` | Headings H1–H6 |
+| `**bold**` | **bold** |
+| `*italic*` or `_italic_` | *italic* |
+| `~~strike~~` | ~~strikethrough~~ |
+| `` `code` `` | `inline code` |
+| `> quote` | Blockquote |
+| `- item` | Bullet list |
+| `- [ ] task` / `- [x] done` | Checkbox (click it in the note to tick it off) |
+
+Select text and pick a highlighter color from the right edge of a note for `==highlights==`. Use the **A− / A+** buttons on a note's titlebar to change its text size, and the **Aa** button to change its font — each note remembers both.
 
 ### Templates
 

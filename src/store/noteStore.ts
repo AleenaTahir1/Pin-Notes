@@ -13,6 +13,8 @@ interface NoteStore {
   loadNote: (id: string) => Promise<void>;
   setContent: (content: string) => void;
   setColor: (color: string) => void;
+  setFont: (font: string) => void;
+  setFontSize: (size: number) => void;
   toggleEditing: () => void;
   setHighlighterColor: (color: HighlighterColor | null) => void;
   save: () => Promise<void>;
@@ -66,6 +68,22 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     if (!note) return;
 
     set({ note: { ...note, color } });
+    get().save();
+  },
+
+  setFont: (font: string) => {
+    const { note } = get();
+    if (!note) return;
+
+    set({ note: { ...note, font } });
+    get().save();
+  },
+
+  setFontSize: (size: number) => {
+    const { note } = get();
+    if (!note) return;
+
+    set({ note: { ...note, font_size: size } });
     get().save();
   },
 
