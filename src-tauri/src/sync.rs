@@ -92,6 +92,13 @@ pub fn from_obsidian_body(md: &str) -> String {
     out
 }
 
+/// Turn a template `.md` file's text into Pin Notes note content: drop any
+/// front-matter and convert Obsidian highlights (`==text==`) to internal markup.
+pub fn template_body(file_text: &str) -> String {
+    let parsed = parse_md(file_text);
+    from_obsidian_body(parsed.body.trim_end())
+}
+
 fn sanitize_filename(title: &str) -> String {
     let s: String = title
         .chars()

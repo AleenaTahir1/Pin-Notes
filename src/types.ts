@@ -44,6 +44,71 @@ export const NOTE_FONTS = [
   { name: 'Mono', value: "'Cascadia Code', 'Fira Code', monospace" },
 ] as const;
 
+// Note templates — quick starting points. `{{date}}` / `{{time}}` are filled in at
+// creation time. Users can add their own by dropping .md files in a `Templates` folder
+// inside their connected Obsidian vault (see get_vault_templates).
+export interface NoteTemplate {
+  name: string;
+  content: string;
+  builtin?: boolean;
+}
+
+export const NOTE_TEMPLATES: NoteTemplate[] = [
+  {
+    name: 'To-do list',
+    builtin: true,
+    content: '# To-do\n\n- [ ] \n- [ ] \n- [ ] ',
+  },
+  {
+    name: 'Daily note',
+    builtin: true,
+    content: '# {{date}}\n\n## Focus\n\n## Notes\n\n## Done\n',
+  },
+  {
+    name: 'Meeting notes',
+    builtin: true,
+    content: '# Meeting — {{date}}\n\nAttendees: \n\n## Agenda\n- \n\n## Notes\n\n## Action items\n- [ ] ',
+  },
+  {
+    name: 'Project plan',
+    builtin: true,
+    content: '# Project: \n\n## Goal\n\n## Milestones\n- [ ] \n- [ ] \n\n## Notes\n',
+  },
+  {
+    name: 'Habit tracker',
+    builtin: true,
+    content: '# Habits — {{date}}\n\n- [ ] Water\n- [ ] Exercise\n- [ ] Read\n- [ ] Sleep 8h',
+  },
+  {
+    name: 'Book notes',
+    builtin: true,
+    content: '# Book: \n\nAuthor: \n\n## Key ideas\n- \n\n## Quotes\n> \n\n## Takeaways\n- ',
+  },
+  {
+    name: 'Pros & cons',
+    builtin: true,
+    content: '# Decision: \n\n## Pros\n- \n\n## Cons\n- ',
+  },
+  {
+    name: 'Grocery list',
+    builtin: true,
+    content: '# Groceries\n\n- [ ] \n- [ ] \n- [ ] ',
+  },
+  {
+    name: 'Quick bullets',
+    builtin: true,
+    content: '- \n- \n- ',
+  },
+];
+
+// Fill {{date}} / {{time}} placeholders with the current local date/time.
+export function applyTemplatePlaceholders(content: string): string {
+  const now = new Date();
+  return content
+    .replace(/\{\{date\}\}/g, now.toLocaleDateString())
+    .replace(/\{\{time\}\}/g, now.toLocaleTimeString());
+}
+
 // Generate a slight random rotation for natural sticky note feel
 export function getRandomRotation(): number {
   // Returns a value between -2 and 2 degrees

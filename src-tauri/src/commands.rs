@@ -26,9 +26,14 @@ pub async fn create_note(
     color: String,
     position_x: i32,
     position_y: i32,
+    content: Option<String>,
 ) -> Result<Note, String> {
     let id = uuid::Uuid::new_v4().to_string();
-    let note = Note::new(id.clone(), color, position_x, position_y);
+    let mut note = Note::new(id.clone(), color, position_x, position_y);
+    // Optional starting content — used when creating a note from a template.
+    if let Some(c) = content {
+        note.content = c;
+    }
     let saved_note = storage.create_note(note)?;
 
     mirror_note(&settings, &saved_note);
@@ -248,4 +253,44 @@ pub async fn sync_obsidian_now(
     } else {
         Ok(false)
     }
+}
+
+#[derive(serde::Serialize)]
+pub struct TemplateDto {
+    pub name: String,
+    pub content: String,
+}
+
+/// Read user templates from a `Templates/` subfolder of the connected vault, so an
+/// Obsidian user's own template `.md` files appear in Pin Notes. Returns an empty list
+/// when no vault is connected or the folder doesn't exist. The `Templates/` subfolder is
+/// ignored by the note sync (which only scans the top-level folder), so they never become notes.
+#[tauri::command]
+pub async fn get_vault_templates(
+    settings: State<'_, SettingsStore>,
+) -> Result<Vec<TemplateDto>, String> {
+    let mut out = Vec::new();
+    if let Some(vault) = settings.vault_path() {
+        let dir = std::path::Path::new(&vault).join("Templates");
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("md") {
+                    if let Ok(text) = std::fs::read_to_string(&path) {
+                        let name = path
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("Template")
+                            .to_string();
+                        out.push(TemplateDto {
+                            name,
+                            content: crate::sync::template_body(&text),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    Ok(out)
 }

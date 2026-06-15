@@ -48,6 +48,7 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 
 - **Always on top** — Floating notes that stay visible over all other windows
 - **Obsidian sync** — Two-way sync with an Obsidian vault: edit notes in either app
+- **Templates** — Start notes from 9 built-in templates, or your own templates from your Obsidian vault
 - **Dark mode** — Pastel-tinted dark theme with one-click toggle, synced across all notes
 - **Notes list panel** — Browse, search, and pin-to-top your favorite notes
 - **Rich highlighting** — 5 highlighter colors (yellow, pink, green, blue, purple)
@@ -104,6 +105,16 @@ Right-click the tray icon for quick actions:
 
 Click the **sun/moon** icon in the notes-list header (or on any note's titlebar) to toggle dark mode. Your choice is saved and applies to every open note instantly.
 
+### Templates
+
+Skip the blank page — start a note from a template.
+
+1. Open the **notes list** and click the **+** button.
+2. Pick **Blank**, or one of the **9 built-in templates** (To-do list, Daily note, Meeting notes, Project plan, Habit tracker, Book notes, Pros & cons, Grocery list, Quick bullets).
+3. The note opens pre-filled. `{{date}}` and `{{time}}` are replaced with the current date/time automatically.
+
+**Your own templates (from Obsidian):** once a vault is connected (see below), create a folder named **`Templates`** inside it and drop in any `.md` files. They show up under **"From your vault"** in the **+** menu — so you can reuse the exact note layouts you already keep in Obsidian. (No vault connected yet? The menu shows a link to connect one.)
+
 ### Obsidian Sync
 
 Keep your notes in sync with an Obsidian vault — edit them in PinNotes **or** Obsidian.
@@ -111,6 +122,8 @@ Keep your notes in sync with an Obsidian vault — edit them in PinNotes **or** 
 1. Open the **notes list** and click the **link (chain)** icon in the header.
 2. Pick a folder inside your vault (e.g. `YourVault\PinNotes`). The icon turns purple when sync is on.
 3. That's it — edits flow both ways automatically. Each note becomes a `.md` file with front-matter; new `.md` files you add in Obsidian become notes.
+
+**Custom templates:** add a `Templates` folder inside your vault and put `.md` files in it — they appear in PinNotes' **+** menu under "From your vault" (see [Templates](#templates) above).
 
 To stop, click the **unlink** icon (your `.md` files are kept). Notes: conflicts resolve last-write-wins, and deleting is one-way (delete in PinNotes to remove a note for good). See [OBSIDIAN_INTEGRATION.md](OBSIDIAN_INTEGRATION.md) for details.
 
@@ -149,10 +162,8 @@ PinNotes/
 │   │   ├── NotesList.tsx   # Notes list panel
 │   │   ├── NoteEditor.tsx  # Note content editor
 │   │   ├── ColorPicker.tsx # Note color selection
-│   │   ├── HighlighterPicker.tsx  # Text highlight colors
-│   │   ├── MarkdownRenderer.tsx   # Markdown preview
-│   │   ├── DeleteModal.tsx # Delete confirmation
-│   │   └── SpiralBinding.tsx      # Decorative spiral
+│   │   ├── UpdateChecker.tsx      # Auto-update banner
+│   │   └── DeleteModal.tsx # Delete confirmation
 │   ├── hooks/              # Custom React hooks
 │   ├── store/              # Zustand state management
 │   ├── styles/             # CSS styles
@@ -177,7 +188,7 @@ PinNotes/
 - **Frontend** — React 19, TypeScript, Zustand
 - **Backend** — Rust, Tauri 2
 - **Animations** — Framer Motion
-- **Markdown** — react-markdown
+- **Markdown** — Two-way Obsidian sync (custom highlight syntax `==text==`)
 - **UI Style** — Neumorphic design
 - **Build** — Vite
 

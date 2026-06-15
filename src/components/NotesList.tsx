@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Note } from '../types';
+import { Note, NoteTemplate, NOTE_TEMPLATES, applyTemplatePlaceholders } from '../types';
 import { UpdateChecker } from './UpdateChecker';
 import { useTheme, toggleTheme } from '../store/theme';
 
@@ -12,6 +12,8 @@ export function NotesList() {
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const [showNewMenu, setShowNewMenu] = useState(false);
+  const [vaultTemplates, setVaultTemplates] = useState<NoteTemplate[]>([]);
   const theme = useTheme();
 
   // Load whether an Obsidian vault is connected
@@ -82,12 +84,14 @@ export function NotesList() {
     return result;
   }, [notes, search]);
 
-  const handleNewNote = async () => {
+  const handleCreate = async (content?: string) => {
+    setShowNewMenu(false);
     try {
       await invoke('create_note', {
         color: '#fff9c4',
         positionX: 200,
         positionY: 200,
+        content: content ?? null,
       });
       // Minimize the list after creating a note — don't close it, so it stays one click away
       const win = getCurrentWindow();
@@ -96,6 +100,27 @@ export function NotesList() {
       console.error('[Pin Notes] Failed to create note:', error);
     }
   };
+
+  const toggleNewMenu = async () => {
+    const next = !showNewMenu;
+    setShowNewMenu(next);
+    if (next) {
+      // Refresh templates from the connected vault's Templates/ folder each time
+      try {
+        setVaultTemplates(await invoke<NoteTemplate[]>('get_vault_templates'));
+      } catch {
+        setVaultTemplates([]);
+      }
+    }
+  };
+
+  // Close the new-note menu on any outside click
+  useEffect(() => {
+    if (!showNewMenu) return;
+    const close = () => setShowNewMenu(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [showNewMenu]);
 
   const handleOpenNote = async (id: string) => {
     try {
@@ -257,15 +282,73 @@ export function NotesList() {
               </svg>
             )}
           </motion.button>
-          <motion.button
-            className="notes-list-add-btn"
-            onClick={handleNewNote}
-            title="New note"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            +
-          </motion.button>
+          <div className="new-note-wrap">
+            <motion.button
+              className="notes-list-add-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNewMenu();
+              }}
+              title="New note / from template"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              +
+            </motion.button>
+            <AnimatePresence>
+              {showNewMenu && (
+                <motion.div
+                  className="new-note-menu"
+                  onClick={(e) => e.stopPropagation()}
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.12 }}
+                >
+                  <button className="new-note-item" onClick={() => handleCreate()}>
+                    <span className="new-note-item-icon">＋</span> Blank note
+                  </button>
+                  <div className="new-note-divider">Templates</div>
+                  {NOTE_TEMPLATES.map((t) => (
+                    <button
+                      key={t.name}
+                      className="new-note-item"
+                      onClick={() => handleCreate(applyTemplatePlaceholders(t.content))}
+                    >
+                      <span className="new-note-item-icon">▤</span> {t.name}
+                    </button>
+                  ))}
+                  <div className="new-note-divider">From your vault</div>
+                  {vaultTemplates.length > 0 ? (
+                    vaultTemplates.map((t) => (
+                      <button
+                        key={`v-${t.name}`}
+                        className="new-note-item"
+                        onClick={() => handleCreate(applyTemplatePlaceholders(t.content))}
+                      >
+                        <span className="new-note-item-icon">◆</span> {t.name}
+                      </button>
+                    ))
+                  ) : vaultPath ? (
+                    <div className="new-note-hint">
+                      Drop <b>.md</b> files into a <b>Templates</b> folder in your vault to use
+                      your own here.
+                    </div>
+                  ) : (
+                    <button
+                      className="new-note-hint new-note-hint-btn"
+                      onClick={() => {
+                        setShowNewMenu(false);
+                        handleConnectObsidian();
+                      }}
+                    >
+                      Connect an Obsidian vault to use your own templates →
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           <motion.button
             className="notes-list-minimize-btn"
             onClick={handleMinimize}

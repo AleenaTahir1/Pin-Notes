@@ -51,6 +51,7 @@ pub fn run() {
             disconnect_obsidian,
             get_sync_status,
             sync_obsidian_now,
+            get_vault_templates,
         ])
         .setup(|app| {
             // Set up system tray
