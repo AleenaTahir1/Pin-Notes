@@ -30,7 +30,7 @@ vice-versa. These all render in Pin Notes **and** round-trip back to your vault:
 | `` `inline code` `` | `inline code` |
 | `> quote` | Blockquote |
 | `- item` (or `* item`) | Bullet list |
-| `- [ ] todo` / `- [x] done` | Task checkbox — **click the box in the note to tick it** |
+| `- [ ] todo` / `-[ ] todo` / `- [x] done` | Task checkbox — **click the box in the note to tick it** |
 | `==text==` | Highlight (see caveat below) |
 
 Type the Markdown in Obsidian and it shows up formatted in Pin Notes after the next sync;

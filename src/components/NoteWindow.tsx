@@ -5,17 +5,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { useNoteStore } from '../store/noteStore';
 import { NoteEditor } from './NoteEditor';
 import { ColorPicker } from './ColorPicker';
-import { DeleteModal } from './DeleteModal';
-import { NOTE_FONTS, HIGHLIGHTER_COLORS, HighlighterColor, toDarkPastel, lightenColor, isDarkColor, DEFAULT_FONT_SIZE, FONT_SIZE_STEP, clampFontSize } from '../types';
-import { useTheme, toggleTheme } from '../store/theme';
-
-const HIGHLIGHTER_DISPLAY: Record<HighlighterColor, string> = {
-  yellow: '#fff59d',
-  pink: '#f8bbd9',
-  green: '#a5d6a7',
-  blue: '#90caf9',
-  purple: '#ce93d8',
-};
+import { NOTE_FONTS, toDarkPastel, lightenColor, isDarkColor, DEFAULT_FONT_SIZE, stepFontSize, hasMarkdown } from '../types';
+import { useTheme } from '../store/theme';
 
 interface NoteWindowProps {
   noteId: string;
@@ -26,23 +17,29 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     note,
     isLoading,
     rotation,
-    highlighterColor,
     loadNote,
     setContent,
     setColor,
     setFont,
     setFontSize,
-    setHighlighterColor,
+    setSize,
     closeNote,
-    clearNote,
     save,
     pullExternal,
   } = useNoteStore();
 
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
   const theme = useTheme();
+
+  // The preview/edit (eye) toggle only applies to notes that actually contain markdown
+  // or rendered template content — plain notes never show it.
+  const canPreview = useMemo(() => (note ? hasMarkdown(note.content) : false), [note?.content]);
+  // If the markdown is removed (or we load a plain note), drop back to edit mode.
+  useEffect(() => {
+    if (!canPreview && previewMode) setPreviewMode(false);
+  }, [canPreview, previewMode]);
 
   // The note remembers its own font; derive the index from the stored value so it
   // restores on reopen. Falls back to the first font when unset/unknown.
@@ -54,6 +51,28 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   useEffect(() => {
     loadNote(noteId);
   }, [noteId, loadNote]);
+
+  // Persist the window size after the user finishes resizing (debounced). Covers both
+  // the corner handle and any OS edge-resize. Tiny sizes (minimize transients) are ignored.
+  useEffect(() => {
+    const win = getCurrentWindow();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let factor = 1;
+    win.scaleFactor().then((f) => { factor = f; }).catch(() => {});
+    const unlistenP = win.onResized(({ payload }) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        const w = payload.width / factor;
+        const h = payload.height / factor;
+        if (w < 200 || h < 180) return; // ignore minimize / transient sizes
+        setSize(w, h);
+      }, 400);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unlistenP.then((un) => un()).catch(() => {});
+    };
+  }, [setSize]);
 
   // Only poll for external (Obsidian) edits when a vault is actually connected.
   // When it isn't (the common case) nothing external changes the note, so we skip
@@ -129,43 +148,30 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     }
   }, []);
 
-  const handleNewNote = useCallback(async () => {
-    try {
-      await invoke('create_note', {
-        color: '#fff9c4',
-        positionX: 300,
-        positionY: 300,
-      });
-    } catch (error) {
-      console.error('[Pin Notes] Failed to create note:', error);
-    }
-  }, []);
-
   const handleCycleFont = useCallback(() => {
     const next = (fontIndex + 1) % NOTE_FONTS.length;
     setFont(NOTE_FONTS[next].value);
   }, [fontIndex, setFont]);
 
-  // Per-note text size (persisted via note.font_size).
+  // Per-note text size (persisted via note.font_size). Two buttons step the presets.
   const fontSize = note?.font_size && note.font_size > 0 ? note.font_size : DEFAULT_FONT_SIZE;
   const handleDecreaseFont = useCallback(() => {
-    setFontSize(clampFontSize(fontSize - FONT_SIZE_STEP));
+    setFontSize(stepFontSize(fontSize, -1));
   }, [fontSize, setFontSize]);
   const handleIncreaseFont = useCallback(() => {
-    setFontSize(clampFontSize(fontSize + FONT_SIZE_STEP));
+    setFontSize(stepFontSize(fontSize, 1));
   }, [fontSize, setFontSize]);
 
-  const handleDeleteClick = useCallback(() => {
-    setShowDeleteModal(true);
-  }, []);
-
-  const handleDeleteConfirm = useCallback(async () => {
-    setShowDeleteModal(false);
-    await clearNote();
-  }, [clearNote]);
-
-  const handleDeleteCancel = useCallback(() => {
-    setShowDeleteModal(false);
+  // Drag the corner handle to resize the window. The final size is persisted by the
+  // onResized listener below (the drag itself is handled by the OS).
+  const handleResizeStart = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await getCurrentWindow().startResizeDragging('SouthEast');
+    } catch (err) {
+      console.warn('Resize failed:', err);
+    }
   }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -173,11 +179,11 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
       e.preventDefault();
       handleClose();
     }
-    if (e.key === 'Escape' && !showDeleteModal) {
+    if (e.key === 'Escape') {
       e.preventDefault();
       handleClose();
     }
-  }, [handleClose, showDeleteModal]);
+  }, [handleClose]);
 
   // In dark mode each note keeps its hue but becomes a dark, pastel-tinted surface.
   const displayColor = useMemo(() => {
@@ -314,50 +320,41 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
               <span className="font-size-label large">A</span>
             </button>
 
-            <button
-              className="titlebar-btn theme-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleTheme();
-              }}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark' ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4.5" />
-                  <line x1="12" y1="2" x2="12" y2="4" />
-                  <line x1="12" y1="20" x2="12" y2="22" />
-                  <line x1="2" y1="12" x2="4" y2="12" />
-                  <line x1="20" y1="12" x2="22" y2="12" />
-                  <line x1="4.9" y1="4.9" x2="6.3" y2="6.3" />
-                  <line x1="17.7" y1="17.7" x2="19.1" y2="19.1" />
-                  <line x1="4.9" y1="19.1" x2="6.3" y2="17.7" />
-                  <line x1="17.7" y1="6.3" x2="19.1" y2="4.9" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              )}
-            </button>
+            {/* Preview / edit toggle — only on notes that contain markdown / templates.
+                Shows the action you'll get: "Preview" (eye) while editing, "Edit"
+                (pencil, highlighted) while previewing. */}
+            {canPreview && (
+              <button
+                className={`titlebar-btn preview-btn ${previewMode ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewMode((v) => !v);
+                }}
+                title={previewMode ? 'Switch to editing' : 'Preview the rendered note'}
+              >
+                {previewMode ? (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+                    </svg>
+                    <span className="preview-btn-label">Edit</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span className="preview-btn-label">Preview</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
-          {/* RIGHT: new note, minimize, delete, close */}
+          {/* RIGHT: minimize, close */}
           <div className="titlebar-right">
-            <button
-              className="titlebar-btn new-note-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleNewNote();
-              }}
-              title="New note"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-
             <button
               className="titlebar-btn minimize-btn"
               onClick={(e) => {
@@ -368,17 +365,6 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-
-            <button
-              className="titlebar-btn delete-btn"
-              onClick={handleDeleteClick}
-              title="Clear note"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="3,6 5,6 21,6" />
-                <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2" />
               </svg>
             </button>
 
@@ -398,33 +384,20 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
         <div className="note-content">
           <NoteEditor
             content={note.content}
-            highlighterColor={highlighterColor}
             onContentChange={setContent}
             onBlur={save}
             font={currentFont}
             fontSize={fontSize}
+            previewMode={previewMode}
           />
-          <div className="highlighter-sidebar">
-            {(Object.keys(HIGHLIGHTER_COLORS) as HighlighterColor[]).map((color) => (
-              <button
-                key={color}
-                className={`hl-side-dot ${highlighterColor === color ? 'active' : ''}`}
-                style={{ backgroundColor: HIGHLIGHTER_DISPLAY[color] }}
-                onClick={() => setHighlighterColor(highlighterColor === color ? null : color)}
-                title={`${color.charAt(0).toUpperCase() + color.slice(1)} highlighter`}
-              />
-            ))}
-          </div>
         </div>
 
-        <div className="resize-handle" />
+        <div
+          className="resize-handle"
+          onMouseDown={handleResizeStart}
+          title="Drag to resize"
+        />
       </motion.div>
-
-      <DeleteModal
-        isOpen={showDeleteModal}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </>
   );
 }

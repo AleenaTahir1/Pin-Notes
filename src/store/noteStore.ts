@@ -15,6 +15,7 @@ interface NoteStore {
   setColor: (color: string) => void;
   setFont: (font: string) => void;
   setFontSize: (size: number) => void;
+  setSize: (width: number, height: number) => void;
   toggleEditing: () => void;
   setHighlighterColor: (color: HighlighterColor | null) => void;
   save: () => Promise<void>;
@@ -84,6 +85,19 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     if (!note) return;
 
     set({ note: { ...note, font_size: size } });
+    get().save();
+  },
+
+  // Persist the note's window size so it reopens as the user left it. Called when a
+  // corner-drag resize finishes (rounded to whole px).
+  setSize: (width: number, height: number) => {
+    const { note } = get();
+    if (!note) return;
+    const w = Math.round(width);
+    const h = Math.round(height);
+    if (note.width === w && note.height === h) return;
+
+    set({ note: { ...note, width: w, height: h } });
     get().save();
   },
 

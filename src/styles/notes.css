@@ -261,7 +261,7 @@ html, body, #root {
   pointer-events: none;
 }
 
-/* Text-size stepper buttons (A− / A+) — slightly narrower to save titlebar room */
+/* Text-size buttons: a small "A" (decrease) and a big "A" (increase). */
 .titlebar-btn.font-size-btn {
   width: 20px;
 }
@@ -271,8 +271,8 @@ html, body, #root {
   color: inherit;
   pointer-events: none;
 }
-.font-size-label.small { font-size: 9px; }
-.font-size-label.large { font-size: 13px; }
+.font-size-label.small { font-size: 10px; }
+.font-size-label.large { font-size: 14px; }
 
 /* ===== Color Picker ===== */
 .color-picker {
@@ -381,56 +381,63 @@ html, body, #root {
   color: rgba(0, 0, 0, 0.4);
 }
 
-/* ===== Highlighter Sidebar — Neumorphic ===== */
-.highlighter-sidebar {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
+/* ===== Highlight popover — appears above (or below) a text selection only ===== */
+/* Portaled to <body> and fixed-positioned so the note's overflow:hidden can't clip it. */
+.hl-popover {
+  position: fixed;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
-  padding: 8px 5px;
-  background: rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(6px);
-  border-radius: 14px;
-  z-index: 10;
-  opacity: 0;
-  transition: opacity 0.25s ease;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  z-index: 9999;
   box-shadow:
-    2px 2px 5px rgba(0, 0, 0, 0.06),
-    -2px -2px 5px rgba(255, 255, 255, 0.6);
+    0 4px 14px rgba(0, 0, 0, 0.22),
+    0 1px 3px rgba(0, 0, 0, 0.14);
+  animation: hl-popover-in 0.12s ease-out;
 }
 
-.note-content:hover .highlighter-sidebar {
-  opacity: 1;
+@keyframes hl-popover-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-.hl-side-dot {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.8);
+.hl-popover-dot {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s, box-shadow 0.15s;
-  box-shadow:
-    1px 1px 2px rgba(0, 0, 0, 0.10),
-    -1px -1px 2px rgba(255, 255, 255, 0.6);
+  transition: transform 0.12s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
-.hl-side-dot:hover {
-  transform: scale(1.25);
-  box-shadow:
-    2px 2px 4px rgba(0, 0, 0, 0.12),
-    -2px -2px 4px rgba(255, 255, 255, 0.7);
+.hl-popover-dot:hover {
+  transform: scale(1.2);
 }
 
-.hl-side-dot.active {
-  border-color: rgba(0, 0, 0, 0.25);
-  transform: scale(1.15);
-  box-shadow:
-    inset 1px 1px 2px rgba(0, 0, 0, 0.10),
-    inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+.hl-popover-eraser {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  color: #5a5a5a;
+  background: rgba(0, 0, 0, 0.06);
+  margin-left: 2px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.hl-popover-eraser:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: #1a1a1a;
 }
 
 /* ===== Note Content — Paper surface ===== */
@@ -477,6 +484,43 @@ html, body, #root {
   color: var(--text-light);
   font-style: italic;
   pointer-events: none;
+}
+
+/* Read-only rendered markdown view (eye/preview mode). Same paper/typography as the
+   editor, but not editable and with a default cursor. */
+.note-preview {
+  cursor: default;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.note-preview .md-task::before {
+  cursor: default;
+}
+
+/* Preview/edit toggle — a small labeled pill so the current mode is unmistakable. */
+.titlebar-btn.preview-btn {
+  width: auto;
+  padding: 0 8px;
+  gap: 4px;
+  border-radius: 11px;
+}
+.preview-btn-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+}
+/* While previewing, the toggle is clearly "on" (filled) and reads "Edit". */
+.titlebar-btn.preview-btn.active {
+  background: rgba(80, 130, 95, 0.9);
+  color: #fff;
+}
+.titlebar-btn.preview-btn.active:hover {
+  background: rgba(70, 118, 85, 1);
+}
+[data-theme="dark"] .titlebar-btn.preview-btn.active {
+  background: rgba(120, 180, 140, 0.95);
+  color: #15241a;
 }
 
 /* Editor highlight colors */
@@ -535,27 +579,24 @@ html, body, #root {
   opacity: 0.7;
 }
 
-/* Task list (interactive checkbox) */
+/* Task list — the checkbox is a ::before marker on the line (state in data-checked),
+   so the line itself is plain editable text. */
 .note-editable .md-task {
-  padding-left: 0.1em;
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
+  padding-left: 1.5em;
+  position: relative;
 }
-.note-editable .md-check {
-  flex: 0 0 auto;
+.note-editable .md-task::before {
+  content: '☐';
+  position: absolute;
+  left: 0.05em;
   cursor: pointer;
   user-select: none;
-  font-size: 1.05em;
-  line-height: 1;
 }
-.note-editable .md-check::before { content: '☐'; }
-.note-editable .md-check[data-checked="true"]::before { content: '☑'; }
-.note-editable .md-task:has(.md-check[data-checked="true"]) .md-li-body {
+.note-editable .md-task[data-checked="true"]::before { content: '☑'; }
+.note-editable .md-task[data-checked="true"] {
   text-decoration: line-through;
   opacity: 0.55;
 }
-.note-editable .md-li-body { flex: 1 1 auto; min-width: 0; }
 
 /* Markdown on dark surfaces — lift the code/quote accents off near-black */
 .note-window.note-dark-bg .note-editable code {
@@ -571,16 +612,17 @@ html, body, #root {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 16px;
-  height: 16px;
-  cursor: se-resize;
-  opacity: 0;
+  width: 24px;
+  height: 24px;
+  cursor: nwse-resize;
+  opacity: 0.4;
   transition: opacity 0.2s;
-  z-index: 6;
+  z-index: 40;
+  touch-action: none;
 }
 
 .note-window:hover .resize-handle {
-  opacity: 0.6;
+  opacity: 0.85;
 }
 
 .resize-handle::after {
@@ -588,11 +630,12 @@ html, body, #root {
   position: absolute;
   bottom: 3px;
   right: 3px;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
   background:
-    linear-gradient(135deg, transparent 30%, rgba(0, 0, 0, 0.15) 30%, rgba(0, 0, 0, 0.15) 50%, transparent 50%),
-    linear-gradient(135deg, transparent 60%, rgba(0, 0, 0, 0.15) 60%, rgba(0, 0, 0, 0.15) 80%, transparent 80%);
+    linear-gradient(135deg, transparent 30%, rgba(0, 0, 0, 0.22) 30%, rgba(0, 0, 0, 0.22) 50%, transparent 50%),
+    linear-gradient(135deg, transparent 60%, rgba(0, 0, 0, 0.22) 60%, rgba(0, 0, 0, 0.22) 80%, transparent 80%);
 }
 
 /* ===== Delete Modal ===== */
@@ -1420,11 +1463,19 @@ html, body, #root {
   background: #2a2a32;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
-[data-theme="dark"] .highlighter-sidebar {
-  background: rgba(255, 255, 255, 0.06);
+[data-theme="dark"] .hl-popover {
+  background: rgba(40, 40, 48, 0.95);
   box-shadow:
-    2px 2px 5px rgba(0, 0, 0, 0.4),
-    -2px -2px 5px rgba(255, 255, 255, 0.05);
+    0 4px 14px rgba(0, 0, 0, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .hl-popover-eraser {
+  color: #c8c8c8;
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .hl-popover-eraser:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
 }
 
 /* --- Delete / clear modal --- */

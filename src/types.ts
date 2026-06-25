@@ -16,14 +16,31 @@ export interface Note {
   font_size?: number;
 }
 
-// Per-note text size controls (the A− / A+ buttons on a note).
-export const DEFAULT_FONT_SIZE = 18;
-export const MIN_FONT_SIZE = 12;
-export const MAX_FONT_SIZE = 32;
-export const FONT_SIZE_STEP = 2;
+// Does this note contain markdown worth a preview toggle? Plain notes return false,
+// so the eye/preview button only shows on markdown or template-rendered notes.
+export function hasMarkdown(content: string): boolean {
+  if (!content) return false;
+  // Block markers at the start of a line: # heading, - / * bullet, > quote
+  if (/^\s{0,3}(#{1,6}\s|[-*]\s|>\s)/m.test(content)) return true;
+  // Task checkbox: - [ ] / - [x] (space after the dash optional)
+  if (/[-*]\s*\[[ xX]\]/.test(content)) return true;
+  // Inline: **bold**, ~~strike~~, `code`, ==highlight==
+  if (/\*\*[^*\n]+\*\*|~~[^~\n]+~~|`[^`\n]+`|==[^\n]+==/.test(content)) return true;
+  return false;
+}
 
-export function clampFontSize(px: number): number {
-  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, px));
+// Per-note text size — two buttons (A− / A+) step through these presets, clamped.
+export const DEFAULT_FONT_SIZE = 18;
+export const FONT_SIZE_PRESETS = [13, 15, 18, 22, 26, 32] as const;
+export const MIN_FONT_SIZE = FONT_SIZE_PRESETS[0];
+export const MAX_FONT_SIZE = FONT_SIZE_PRESETS[FONT_SIZE_PRESETS.length - 1];
+
+// Step to the previous/next size preset (dir = -1 or +1), clamped at the ends.
+export function stepFontSize(px: number, dir: -1 | 1): number {
+  if (dir === 1) {
+    return FONT_SIZE_PRESETS.find((p) => p > px) ?? MAX_FONT_SIZE;
+  }
+  return [...FONT_SIZE_PRESETS].reverse().find((p) => p < px) ?? MIN_FONT_SIZE;
 }
 
 // Sticky note colors — airy soft pastels. These same hues tint the surface in dark

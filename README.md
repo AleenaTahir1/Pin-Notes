@@ -48,13 +48,15 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 
 - **Always on top** — Floating notes that stay visible over all other windows
 - **Obsidian sync** — Two-way sync with an Obsidian vault: edit notes in either app
-- **Markdown formatting** — Headings (H1–H6), **bold**, *italic*, ~~strikethrough~~, `inline code`, blockquotes, bullet lists, and tickable task checkboxes — all round-trip with Obsidian
+- **Markdown formatting** — Headings (H1–H6), **bold**, *italic*, ~~strikethrough~~, `inline code`, blockquotes, bullet lists, and tickable task checkboxes (`- [ ]` or `-[ ]`) — all round-trip with Obsidian
+- **Preview mode** — Markdown/template notes get an eye toggle to flip between editing and a clean, read-only rendered view
 - **Templates** — Start notes from 9 built-in templates, or your own templates from your Obsidian vault
 - **Dark mode** — Pastel-tinted dark theme with one-click toggle, synced across all notes
 - **Notes list panel** — Browse, search, and pin-to-top your favorite notes
-- **Rich highlighting** — 5 highlighter colors (yellow, pink, green, blue, purple)
+- **Highlighting** — Select text to pop up a color strip (5 colors) with an eraser to remove a highlight
 - **Multiple note colors** — 8 pastel themes to color-code your notes
-- **Font & text size** — Switch fonts (Handwriting, Clean, Mono) and bump text size up/down — each note remembers its own
+- **Font & text size** — Switch fonts (Handwriting, Clean, Mono) and step text size up/down — each note remembers both
+- **Resizable notes** — Drag any corner or edge; each note reopens at the size you left it
 - **System tray** — Quick actions from the tray icon (new note, notes list, show all, quit)
 - **Global shortcuts** — Create notes and open the list from anywhere on your desktop
 - **Auto-save** — Notes save automatically with debounce, no manual saving needed
@@ -82,7 +84,7 @@ Download the latest release from the [Releases](https://github.com/AleenaTahir1/
 2. **Create a note** — Press `Ctrl+Alt+P` or right-click the tray icon
 3. **Write anything** — Your note auto-saves as you type
 4. **Pick a color** — Click the palette icon to change note color
-5. **Highlight text** — Select text and choose a highlighter color
+5. **Highlight text** — Select text and a color strip pops up; pick a color (or the eraser to remove one)
 
 ### Keyboard Shortcuts
 
@@ -104,7 +106,7 @@ Right-click the tray icon for quick actions:
 
 ### Dark Mode
 
-Click the **sun/moon** icon in the notes-list header (or on any note's titlebar) to toggle dark mode. Your choice is saved and applies to every open note instantly. In dark mode each note keeps its color as a tint, so a Buttercream note reads as warm dark grey and a Sky note as a cool anthracite.
+Click the **sun/moon** icon in the notes-list header to toggle dark mode. Your choice is saved and applies to every open note instantly. In dark mode each note keeps its color as a tint, so a Buttercream note reads as warm dark grey and a Sky note as a cool anthracite.
 
 ### Formatting (Markdown)
 
@@ -119,9 +121,11 @@ Notes understand plain Markdown, so anything you write stays readable in Obsidia
 | `` `code` `` | `inline code` |
 | `> quote` | Blockquote |
 | `- item` | Bullet list |
-| `- [ ] task` / `- [x] done` | Checkbox (click it in the note to tick it off) |
+| `- [ ] task` / `-[ ] task` / `- [x] done` | Checkbox (click the box in the note to tick it off) |
 
-Select text and pick a highlighter color from the right edge of a note for `==highlights==`. Use the **A− / A+** buttons on a note's titlebar to change its text size, and the **Aa** button to change its font — each note remembers both.
+Markdown renders when you reopen a note, or instantly via the **👁 Preview** toggle (it appears on the titlebar for any note containing markdown — flip between editing and a clean rendered view).
+
+**Highlights:** select text and a small color strip pops up above it — pick one of 5 colors, or the eraser to remove a highlight. Stored as `==highlights==` for Obsidian. Use the **A− / A+** buttons on a note's titlebar to change its text size and the **Aa** button to change its font — each note remembers both.
 
 ### Templates
 

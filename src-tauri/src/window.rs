@@ -21,6 +21,7 @@ pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
     let window = WebviewWindowBuilder::new(app, &window_label, url)
         .title("Pin Note")
         .inner_size(note.width as f64, note.height as f64)
+        .min_inner_size(220.0, 200.0)
         .position(note.position_x as f64, note.position_y as f64)
         .decorations(false)
         .transparent(true)
