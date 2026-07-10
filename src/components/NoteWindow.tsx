@@ -52,6 +52,18 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     loadNote(noteId);
   }, [noteId, loadNote]);
 
+  // The window is created hidden (see create_note_window). Reveal it only once the note
+  // has actually rendered, so it opens smoothly instead of flashing an empty window.
+  useEffect(() => {
+    if (isLoading) return;
+    const win = getCurrentWindow();
+    const raf = requestAnimationFrame(() => {
+      win.show().catch(() => {});
+      win.setFocus().catch(() => {});
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isLoading]);
+
   // Persist the window size after the user finishes resizing (debounced). Covers both
   // the corner handle and any OS edge-resize. Tiny sizes (minimize transients) are ignored.
   useEffect(() => {
@@ -64,7 +76,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
       timer = setTimeout(() => {
         const w = payload.width / factor;
         const h = payload.height / factor;
-        if (w < 200 || h < 180) return; // ignore minimize / transient sizes
+        if (w < 80 || h < 62) return; // ignore minimize / transient sizes (below the min)
         setSize(w, h);
       }, 400);
     });
@@ -226,14 +238,14 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
           perspective: 1200,
           transformOrigin: 'center 60%',
         } as React.CSSProperties}
-        initial={{ scale: 0.9, opacity: 0, rotateX: 2 }}
+        initial={{ scale: 0.985, opacity: 0, rotateX: 2 }}
         animate={{
           scale: isDragging ? 1.01 : 1,
           opacity: 1,
           rotateX: 2,
           y: isDragging ? -2 : 0,
         }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
+        transition={{ duration: 0.16, ease: 'easeOut' }}
         onKeyDown={handleKeyDown}
         tabIndex={-1}
       >

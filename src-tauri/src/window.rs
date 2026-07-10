@@ -21,33 +21,54 @@ pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
     let window = WebviewWindowBuilder::new(app, &window_label, url)
         .title("Pin Note")
         .inner_size(note.width as f64, note.height as f64)
-        .min_inner_size(220.0, 200.0)
+        // Keep notes freeform: allow shrinking down to a thin one-line note (titlebar +
+        // a line). Just enough of a floor that the window can't collapse to nothing.
+        .min_inner_size(90.0, 72.0)
         .position(note.position_x as f64, note.position_y as f64)
         .decorations(false)
         .transparent(true)
         .always_on_top(true)
         .resizable(true)
-        .visible(true)
+        // Start hidden — the frontend reveals the window once the note has painted, so it
+        // opens smoothly instead of flashing an empty transparent window first.
+        .visible(false)
         .icon(app_icon()?)
         .map_err(|e| e.to_string())?
         .build()
         .map_err(|e| e.to_string())?;
 
-    let _ = window.show();
-    let _ = window.set_focus();
+    // The frontend reveals the window as soon as the note paints (smooth open). This is a
+    // safety net so the window can never get stuck hidden if that signal is missed.
+    let fallback = window.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        if !fallback.is_visible().unwrap_or(true) {
+            let _ = fallback.show();
+            let _ = fallback.set_focus();
+        }
+    });
 
     Ok(())
+}
+
+/// Force a window to the front of the always-on-top band (Windows sometimes leaves a
+/// re-shown window behind other topmost windows until the flag is re-applied).
+fn bring_to_front(window: &tauri::WebviewWindow) {
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_always_on_top(false);
+    let _ = window.set_always_on_top(true);
+    let _ = window.set_focus();
 }
 
 pub fn create_notes_list_window(app: &AppHandle) -> Result<(), String> {
     let window_label = "notes-list";
 
-    // If already open, bring it back: unminimize (it may be sitting in the taskbar),
-    // show, and focus — clicking "All notes" must always surface the list.
+    // If already open, bring it back to the front. On Windows 10 the list could open or
+    // stay behind the always-on-top note windows; bring_to_front re-asserts topmost so
+    // "All notes" always surfaces the list.
     if let Some(window) = app.get_webview_window(window_label) {
-        let _ = window.unminimize();
-        let _ = window.show();
-        let _ = window.set_focus();
+        bring_to_front(&window);
         return Ok(());
     }
 
@@ -66,8 +87,7 @@ pub fn create_notes_list_window(app: &AppHandle) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let _ = window.show();
-    let _ = window.set_focus();
+    bring_to_front(&window);
 
     Ok(())
 }

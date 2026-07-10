@@ -56,7 +56,7 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 - **Highlighting** — Select text to pop up a color strip (5 colors) with an eraser to remove a highlight
 - **Multiple note colors** — 8 pastel themes to color-code your notes
 - **Font & text size** — Switch fonts (Handwriting, Clean, Mono) and step text size up/down — each note remembers both
-- **Resizable notes** — Drag any corner or edge; each note reopens at the size you left it
+- **Freeform sizing** — Drag any corner or edge to resize, all the way down to a thin one-line note; each note reopens at the size you left it
 - **System tray** — Quick actions from the tray icon (new note, notes list, show all, quit)
 - **Global shortcuts** — Create notes and open the list from anywhere on your desktop
 - **Auto-save** — Notes save automatically with debounce, no manual saving needed

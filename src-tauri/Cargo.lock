@@ -2845,7 +2845,7 @@ dependencies = [
 
 [[package]]
 name = "pin-notes"
-version = "1.0.7"
+version = "1.0.8"
 dependencies = [
  "chrono",
  "directories",

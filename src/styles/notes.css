@@ -158,6 +158,7 @@ html, body, #root {
 
 .titlebar-left {
   flex: 1;
+  min-width: 0;
   justify-content: flex-start;
 }
 
