@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
+
+// Remembers a version the user chose to skip, so we don't nag them about it again.
+const SKIP_KEY = 'pinnotes-skipped-update';
 
 // Compare two semver strings. Returns >0 if a is newer than b, <0 if older, 0 if equal.
 // Pre-release / build metadata is ignored — only the numeric core (x.y.z) is compared,
@@ -23,7 +27,6 @@ export function UpdateChecker() {
   const [status, setStatus] = useState<'idle' | 'available' | 'downloading' | 'done'>('idle');
   const [version, setVersion] = useState('');
   const [progress, setProgress] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     // Check for updates 3 seconds after mount
@@ -31,16 +34,13 @@ export function UpdateChecker() {
       try {
         const [update, current] = await Promise.all([check(), getVersion()]);
 
-        // Only surface the banner when the endpoint advertises a version that is
-        // STRICTLY newer than the version actually running. This prevents the
-        // "update available" message from showing after the update is already
-        // installed (e.g. when the endpoint still serves the same version, or the
-        // updater reports an equal/older build).
+        // Only surface the popup when the endpoint advertises a version STRICTLY newer
+        // than the running one (prevents "update available" after it's already installed).
         if (update && compareVersions(update.version, current) > 0) {
+          // Don't nag about a version the user explicitly skipped.
+          if (localStorage.getItem(SKIP_KEY) === update.version) return;
           setVersion(update.version);
           setStatus('available');
-        } else {
-          setStatus('idle');
         }
       } catch (err) {
         console.warn('[Pin Notes] Update check failed:', err);
@@ -55,7 +55,7 @@ export function UpdateChecker() {
       setStatus('downloading');
       const [update, current] = await Promise.all([check(), getVersion()]);
       if (!update || compareVersions(update.version, current) <= 0) {
-        // Nothing newer to install after all — drop the banner.
+        // Nothing newer to install after all — close the popup.
         setStatus('idle');
         return;
       }
@@ -85,33 +85,77 @@ export function UpdateChecker() {
     }
   };
 
-  if (dismissed || status === 'idle') return null;
+  // Skip this version: remember it so it won't pop up again, and close the popup.
+  const handleSkip = () => {
+    if (version) localStorage.setItem(SKIP_KEY, version);
+    setStatus('idle');
+  };
+
+  const isOpen = status !== 'idle';
 
   return (
-    <div className="update-banner">
-      {status === 'available' && (
-        <>
-          <span className="update-text">v{version} available</span>
-          <button className="update-btn" onClick={handleUpdate}>Update</button>
-          <button className="update-dismiss" onClick={() => setDismissed(true)}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="update-modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          // Clicking the backdrop skips (only while the choice is still the user's).
+          onClick={status === 'available' ? handleSkip : undefined}
+        >
+          <motion.div
+            className="update-modal"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="update-modal-icon">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-3.5-7.1" />
+                <polyline points="21 3 21 8 16 8" />
+              </svg>
+            </div>
+
+            {status === 'available' && (
+              <>
+                <h3 className="update-modal-title">Update available</h3>
+                <p className="update-modal-message">
+                  Version {version.replace(/^v/, '')} is ready — with the latest features and fixes.
+                </p>
+                <div className="update-modal-buttons">
+                  <button className="update-modal-btn skip" onClick={handleSkip}>
+                    Skip
+                  </button>
+                  <button className="update-modal-btn confirm" onClick={handleUpdate}>
+                    Update now
+                  </button>
+                </div>
+              </>
+            )}
+
+            {status === 'downloading' && (
+              <>
+                <h3 className="update-modal-title">Updating…</h3>
+                <div className="update-progress-bar">
+                  <div className="update-progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="update-modal-message">{progress}% — please keep the app open</p>
+              </>
+            )}
+
+            {status === 'done' && (
+              <>
+                <h3 className="update-modal-title">Restarting…</h3>
+                <p className="update-modal-message">Pin Notes is reopening on the new version.</p>
+              </>
+            )}
+          </motion.div>
+        </motion.div>
       )}
-      {status === 'downloading' && (
-        <>
-          <span className="update-text">Updating... {progress}%</span>
-          <div className="update-progress-bar">
-            <div className="update-progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-        </>
-      )}
-      {status === 'done' && (
-        <span className="update-text">Restarting...</span>
-      )}
-    </div>
+    </AnimatePresence>
   );
 }
