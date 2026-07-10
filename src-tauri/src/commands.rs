@@ -167,13 +167,15 @@ pub async fn close_note(
     storage: State<'_, NotesStorage>,
     id: String,
 ) -> Result<(), String> {
+    // Close the window FIRST so it disappears instantly — don't make the user wait on the
+    // disk write. Persisting the hidden flag happens right after.
+    if let Some(window) = app.get_webview_window(&format!("note-{}", id)) {
+        let _ = window.close();
+    }
+
     if let Some(mut note) = storage.get_note(&id)? {
         note.is_visible = false;
         storage.update_note(note)?;
-    }
-
-    if let Some(window) = app.get_webview_window(&format!("note-{}", id)) {
-        let _ = window.close();
     }
     Ok(())
 }

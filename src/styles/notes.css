@@ -73,35 +73,6 @@ html, body, #root {
     0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-/* Stacked page layers behind the note */
-.note-window::before,
-.note-window::after {
-  content: '';
-  position: absolute;
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-/* Second page layer */
-.note-window::before {
-  inset: 0;
-  background: inherit;
-  filter: brightness(0.96);
-  z-index: -1;
-  transform: translate(2px, 3px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-/* Third page layer */
-.note-window::after {
-  inset: 0;
-  background: inherit;
-  filter: brightness(0.92);
-  z-index: -2;
-  transform: translate(4px, 6px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.04);
-}
-
 .note-window.loading,
 .note-window.error {
   display: flex;
