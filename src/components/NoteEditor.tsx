@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { HighlighterColor } from '../types';
+import { useI18n, type MessageKey } from '../store/i18n';
 
 interface NoteEditorProps {
   content: string;
@@ -204,6 +205,7 @@ export function NoteEditor({
   fontSize,
   previewMode = false,
 }: NoteEditorProps) {
+  const { t } = useI18n();
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
   const lastContent = useRef<string | null>(null);
@@ -664,7 +666,7 @@ export function NoteEditor({
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
-        data-placeholder="Write something..."
+        data-placeholder={t('editor.placeholder')}
         spellCheck={false}
         suppressContentEditableWarning
         style={{ ...typeStyle, ...(previewMode ? { display: 'none' } : {}) }}
@@ -692,14 +694,14 @@ export function NoteEditor({
               type="button"
               className="hl-popover-dot"
               style={{ backgroundColor: HL_SWATCH[color] }}
-              title={`${color.charAt(0).toUpperCase() + color.slice(1)} highlight`}
+              title={t('editor.highlightTitle', { color: t(`highlight.${color}` as MessageKey) })}
               onClick={() => applyHighlight(color)}
             />
           ))}
           <button
             type="button"
             className="hl-popover-eraser"
-            title="Remove highlight"
+            title={t('editor.removeHighlight')}
             onClick={removeHighlight}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

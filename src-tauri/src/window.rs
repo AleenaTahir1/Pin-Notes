@@ -1,4 +1,5 @@
 use crate::storage::Note;
+use crate::settings::SettingsStore;
 use tauri::image::Image;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
@@ -18,8 +19,10 @@ pub fn create_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
 
     let url = WebviewUrl::App(format!("index.html?noteId={}", note.id).into());
 
+    let settings = app.state::<SettingsStore>();
+    let lang = settings.language();
     let window = WebviewWindowBuilder::new(app, &window_label, url)
-        .title("Pin Note")
+        .title(crate::i18n::window_title(&lang, true))
         .inner_size(note.width as f64, note.height as f64)
         // Keep notes freeform: allow shrinking down to a thin one-line note (titlebar +
         // a line). Just enough of a floor that the window can't collapse to nothing.
@@ -74,8 +77,10 @@ pub fn create_notes_list_window(app: &AppHandle) -> Result<(), String> {
 
     let url = WebviewUrl::App("index.html?view=list".into());
 
+    let settings = app.state::<SettingsStore>();
+    let lang = settings.language();
     let window = WebviewWindowBuilder::new(app, window_label, url)
-        .title("Pin Notes")
+        .title(crate::i18n::window_title(&lang, false))
         .inner_size(300.0, 480.0)
         .position(50.0, 50.0)
         .decorations(false)

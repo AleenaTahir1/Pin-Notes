@@ -1,16 +1,33 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { useNoteStore } from '../store/noteStore';
 import { NoteEditor } from './NoteEditor';
 import { ColorPicker } from './ColorPicker';
 import { NOTE_FONTS, toDarkPastel, lightenColor, isDarkColor, DEFAULT_FONT_SIZE, stepFontSize, hasMarkdown } from '../types';
 import { useTheme } from '../store/theme';
+import { useI18n } from '../store/i18n';
 
 interface NoteWindowProps {
   noteId: string;
 }
+
+interface AppSettings {
+  vault_path: string | null;
+  edge_dock_enabled: boolean;
+  auto_start: boolean;
+}
+
+interface SettingsChangedPayload {
+  edge_dock_enabled: boolean;
+  auto_start: boolean;
+}
+
+const EDGE_SNAP_DEBOUNCE_MS = 300;
+const EDGE_AUTO_HIDE_DELAY_MS = 500;
+const EDGE_MOVE_BUFFER_MS = 650;
 
 export function NoteWindow({ noteId }: NoteWindowProps) {
   const {
@@ -32,6 +49,14 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const theme = useTheme();
+  const { t, lang } = useI18n();
+  const [edgeDockEnabled, setEdgeDockEnabled] = useState(false);
+  const dockedRef = useRef(false);
+  const hiddenRef = useRef(false);
+  const mouseInsideRef = useRef(false);
+  const suppressMovedUntilRef = useRef(0);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // The preview/edit (eye) toggle only applies to notes that actually contain markdown
   // or rendered template content — plain notes never show it.
@@ -51,6 +76,11 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   useEffect(() => {
     loadNote(noteId);
   }, [noteId, loadNote]);
+
+  // Keep the OS window title in the active language.
+  useEffect(() => {
+    getCurrentWindow().setTitle(t('app.noteTitle')).catch(() => {});
+  }, [lang, t]);
 
   // The window is created hidden (see create_note_window). Reveal it only once the note
   // has actually rendered, so it opens smoothly instead of flashing an empty window.
@@ -126,8 +156,154 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     }
   }, [showColorPicker]);
 
+  // QQ-style edge docking: read the current setting, and react to tray toggles.
+  // Turning the feature off reveals any hidden note immediately.
+  useEffect(() => {
+    let active = true;
+    invoke<AppSettings>('get_settings')
+      .then((settings) => {
+        if (active) setEdgeDockEnabled(settings.edge_dock_enabled);
+      })
+      .catch(() => {});
+
+    const unlistenP = listen<SettingsChangedPayload>('settings-changed', (event) => {
+      setEdgeDockEnabled(event.payload.edge_dock_enabled);
+      if (event.payload.edge_dock_enabled) return;
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+      if (moveTimerRef.current) {
+        clearTimeout(moveTimerRef.current);
+        moveTimerRef.current = null;
+      }
+      if (hiddenRef.current) {
+        hiddenRef.current = false;
+        invoke('reveal_docked_note', { noteId }).catch(() => {});
+      }
+      dockedRef.current = false;
+    });
+
+    return () => {
+      active = false;
+      unlistenP.then((unlisten) => unlisten()).catch(() => {});
+    };
+  }, [noteId]);
+
+  const moveNoteToEdge = useCallback(async (autoHide: boolean) => {
+    suppressMovedUntilRef.current = performance.now() + EDGE_MOVE_BUFFER_MS;
+    if (autoHide) {
+      // 正在编辑/输入，或鼠标已经回到窗口内时，绝不自动收起。
+      // hasFocus() 保证只有窗口真正持有时才算“编辑中”，避免残留的 DOM 焦点
+      // （点过一次编辑器后 activeElement 不会自动清空）把隐藏永久拦截掉。
+      const editing =
+        document.hasFocus() && !!document.activeElement?.closest('.note-editable');
+      if (editing || mouseInsideRef.current) return false;
+    }
+    try {
+      const edge = await invoke<string | null>('snap_note_to_edge', { noteId, autoHide });
+      if (autoHide) {
+        hiddenRef.current = edge != null;
+      } else {
+        hiddenRef.current = false;
+        dockedRef.current = edge != null;
+      }
+      return edge != null;
+    } catch {
+      return false;
+    }
+  }, [noteId]);
+
+  const revealDockedNote = useCallback(async () => {
+    suppressMovedUntilRef.current = performance.now() + EDGE_MOVE_BUFFER_MS;
+    try {
+      const revealed = await invoke<boolean>('reveal_docked_note', { noteId });
+      if (revealed) {
+        hiddenRef.current = false;
+        dockedRef.current = true;
+      }
+      return revealed;
+    } catch {
+      return false;
+    }
+  }, [noteId]);
+
+  const scheduleAutoHide = useCallback(() => {
+    if (!edgeDockEnabled || hiddenRef.current || !dockedRef.current) return;
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      moveNoteToEdge(true);
+    }, EDGE_AUTO_HIDE_DELAY_MS);
+  }, [edgeDockEnabled, moveNoteToEdge]);
+
+  useEffect(() => {
+    const win = getCurrentWindow();
+    const unlistenP = win.onMoved(() => {
+      // Programmatic snap/reveal moves are buffered; only user drags schedule a snap.
+      if (hiddenRef.current) return;
+      if (performance.now() < suppressMovedUntilRef.current) return;
+      if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+      moveTimerRef.current = setTimeout(() => {
+        moveNoteToEdge(false);
+      }, EDGE_SNAP_DEBOUNCE_MS);
+    });
+    return () => {
+      unlistenP.then((unlisten) => unlisten()).catch(() => {});
+      if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [moveNoteToEdge]);
+
+  // 输入期间被跳过的那次隐藏，在焦点真正离开后补上（鼠标已不在窗口内时）。
+  useEffect(() => {
+    const win = getCurrentWindow();
+    const unlistenP = win.onFocusChanged(({ payload: focused }) => {
+      if (!focused && !mouseInsideRef.current) {
+        scheduleAutoHide();
+      }
+    });
+    return () => {
+      unlistenP.then((unlisten) => unlisten()).catch(() => {});
+    };
+  }, [scheduleAutoHide]);
+
+  const handleMouseEnter = useCallback(() => {
+    mouseInsideRef.current = true;
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    if (hiddenRef.current) {
+      revealDockedNote();
+    }
+  }, [revealDockedNote]);
+
+  const handleMouseLeave = useCallback(() => {
+    mouseInsideRef.current = false;
+    scheduleAutoHide();
+  }, [scheduleAutoHide]);
+
   const handleStartDrag = useCallback(async (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
+    // Grabbing a hidden note's edge strip reveals it first, so the drag starts
+    // from the full window instead of fighting the reveal animation.
+    if (hiddenRef.current) {
+      hiddenRef.current = false;
+      suppressMovedUntilRef.current = performance.now() + EDGE_MOVE_BUFFER_MS;
+      try {
+        await invoke<boolean>('reveal_docked_note', { noteId });
+      } catch {
+        // fall through and start dragging anyway
+      }
+    }
+    // 开始拖动说明用户已离开编辑状态：清掉编辑器残留焦点，
+    // 否则后续自动收起会被“正在编辑”误判一直拦截。
+    if (
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement.closest('.note-editable')
+    ) {
+      document.activeElement.blur();
+    }
     setIsDragging(true);
     try {
       const win = getCurrentWindow();
@@ -137,7 +313,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     } finally {
       setIsDragging(false);
     }
-  }, []);
+  }, [noteId]);
 
   const handleClose = useCallback(async () => {
     await closeNote();
@@ -222,7 +398,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   if (!note) {
     return (
       <div className="note-window error">
-        <p>Note not found</p>
+        <p>{t('note.notFound')}</p>
       </div>
     );
   }
@@ -247,6 +423,8 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
         }}
         transition={{ duration: 0.16, ease: 'easeOut' }}
         onKeyDown={handleKeyDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         tabIndex={-1}
       >
         <div
@@ -263,7 +441,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 e.stopPropagation();
                 handleOpenNotesList();
               }}
-              title="All notes"
+              title={t('note.allNotes')}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -278,7 +456,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 e.stopPropagation();
                 setShowColorPicker(!showColorPicker);
               }}
-              title="Change color"
+              title={t('note.changeColor')}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4c3.1 0 5.6-2.5 5.6-5.6C23 5.8 18.1 2 12 2z" />
@@ -305,7 +483,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 e.stopPropagation();
                 handleCycleFont();
               }}
-              title={`Font: ${NOTE_FONTS[fontIndex].name}`}
+              title={t('note.font', { name: t(NOTE_FONTS[fontIndex].nameKey) })}
             >
               <span className="font-btn-label" style={{ fontFamily: currentFont }}>Aa</span>
             </button>
@@ -316,7 +494,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 e.stopPropagation();
                 handleDecreaseFont();
               }}
-              title="Smaller text"
+              title={t('note.smallerText')}
             >
               <span className="font-size-label small">A</span>
             </button>
@@ -327,7 +505,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 e.stopPropagation();
                 handleIncreaseFont();
               }}
-              title="Larger text"
+              title={t('note.largerText')}
             >
               <span className="font-size-label large">A</span>
             </button>
@@ -342,7 +520,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                   e.stopPropagation();
                   setPreviewMode((v) => !v);
                 }}
-                title={previewMode ? 'Switch to editing' : 'Preview the rendered note'}
+                title={previewMode ? t('note.switchToEdit') : t('note.previewRendered')}
               >
                 {previewMode ? (
                   <>
@@ -350,7 +528,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                       <path d="M12 20h9" />
                       <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
                     </svg>
-                    <span className="preview-btn-label">Edit</span>
+                    <span className="preview-btn-label">{t('note.edit')}</span>
                   </>
                 ) : (
                   <>
@@ -358,7 +536,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>
-                    <span className="preview-btn-label">Preview</span>
+                    <span className="preview-btn-label">{t('note.preview')}</span>
                   </>
                 )}
               </button>
@@ -373,7 +551,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
                 e.stopPropagation();
                 handleMinimize();
               }}
-              title="Minimize"
+              title={t('note.minimize')}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -383,7 +561,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             <button
               className="titlebar-btn close-btn"
               onClick={handleClose}
-              title="Close (Esc)"
+              title={t('note.closeEsc')}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -407,7 +585,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
         <div
           className="resize-handle"
           onMouseDown={handleResizeStart}
-          title="Drag to resize"
+          title={t('note.resize')}
         />
       </motion.div>
     </>

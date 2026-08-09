@@ -1,7 +1,24 @@
-use crate::settings::SettingsStore;
+use crate::settings::{Settings, SettingsStore};
 use crate::storage::{Note, NotesStorage};
 use crate::window::{create_note_window, create_notes_list_window};
 use tauri::{AppHandle, Manager, State};
+
+/// Full app settings for the frontend (edge docking is read by every note window).
+#[tauri::command]
+pub fn get_settings(settings: State<'_, SettingsStore>) -> Result<Settings, String> {
+    settings.snapshot()
+}
+
+/// Switch the UI language. Persists it for the Rust side (tray, window titles)
+/// and updates already-open windows; the webviews themselves sync through
+/// localStorage and only call this to keep the native shell in sync.
+#[tauri::command]
+pub fn set_language(
+    app: AppHandle,
+    language: String,
+) -> Result<(), String> {
+    crate::tray::set_app_language(&app, language)
+}
 
 /// If a vault is connected, mirror a single note out to its `.md` file immediately so
 /// Obsidian reflects the change without waiting for the next background sync tick.

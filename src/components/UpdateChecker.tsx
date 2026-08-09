@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
+import { useI18n } from '../store/i18n';
 
 // Remembers a version the user chose to skip, so we don't nag them about it again.
 const SKIP_KEY = 'pinnotes-skipped-update';
@@ -24,6 +25,7 @@ function compareVersions(a: string, b: string): number {
 }
 
 export function UpdateChecker() {
+  const { t } = useI18n();
   const [status, setStatus] = useState<'idle' | 'available' | 'downloading' | 'done'>('idle');
   const [version, setVersion] = useState('');
   const [progress, setProgress] = useState(0);
@@ -122,16 +124,16 @@ export function UpdateChecker() {
 
             {status === 'available' && (
               <>
-                <h3 className="update-modal-title">Update available</h3>
+                <h3 className="update-modal-title">{t('update.available')}</h3>
                 <p className="update-modal-message">
-                  Version {version.replace(/^v/, '')} is ready — with the latest features and fixes.
+                  {t('update.ready', { version: version.replace(/^v/, '') })}
                 </p>
                 <div className="update-modal-buttons">
                   <button className="update-modal-btn skip" onClick={handleSkip}>
-                    Skip
+                    {t('update.skip')}
                   </button>
                   <button className="update-modal-btn confirm" onClick={handleUpdate}>
-                    Update now
+                    {t('update.now')}
                   </button>
                 </div>
               </>
@@ -139,18 +141,18 @@ export function UpdateChecker() {
 
             {status === 'downloading' && (
               <>
-                <h3 className="update-modal-title">Updating…</h3>
+                <h3 className="update-modal-title">{t('update.downloading')}</h3>
                 <div className="update-progress-bar">
                   <div className="update-progress-fill" style={{ width: `${progress}%` }} />
                 </div>
-                <p className="update-modal-message">{progress}% — please keep the app open</p>
+                <p className="update-modal-message">{t('update.keepOpen', { progress })}</p>
               </>
             )}
 
             {status === 'done' && (
               <>
-                <h3 className="update-modal-title">Restarting…</h3>
-                <p className="update-modal-message">Pin Notes is reopening on the new version.</p>
+                <h3 className="update-modal-title">{t('update.restarting')}</h3>
+                <p className="update-modal-message">{t('update.reopening')}</p>
               </>
             )}
           </motion.div>
