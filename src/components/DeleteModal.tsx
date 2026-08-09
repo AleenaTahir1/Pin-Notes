@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useI18n } from '../store/i18n';
 
 interface DeleteModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface DeleteModalProps {
 }
 
 export function DeleteModal({ isOpen, onConfirm, onCancel }: DeleteModalProps) {
+  const { t } = useI18n();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -34,22 +36,22 @@ export function DeleteModal({ isOpen, onConfirm, onCancel }: DeleteModalProps) {
                 <line x1="14" y1="11" x2="14" y2="17" />
               </svg>
             </div>
-            <h3 className="delete-modal-title">Clear this note?</h3>
+            <h3 className="delete-modal-title">{t('delete.title')}</h3>
             <p className="delete-modal-message">
-              Everything on this note will be erased and you'll get a fresh page.
+              {t('delete.message')}
             </p>
             <div className="delete-modal-buttons">
               <button
                 className="delete-modal-btn cancel"
                 onClick={onCancel}
               >
-                Keep it
+                {t('delete.keep')}
               </button>
               <button
                 className="delete-modal-btn confirm"
                 onClick={onConfirm}
               >
-                Clear
+                {t('delete.clear')}
               </button>
             </div>
           </motion.div>

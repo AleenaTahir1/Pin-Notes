@@ -11,6 +11,21 @@ pub struct Settings {
     /// Absolute path to the folder notes are synced with (an Obsidian vault or a
     /// subfolder of one). `None` means sync is off.
     pub vault_path: Option<String>,
+    /// When enabled, dragging a note to a screen edge docks it there; leaving it
+    /// alone auto-hides it to a thin reveal strip (QQ-style edge docking).
+    #[serde(default)]
+    pub edge_dock_enabled: bool,
+    /// Launch Pin Notes automatically when the user signs in to Windows.
+    #[serde(default)]
+    pub auto_start: bool,
+    /// UI language: "zh" or "en". Kept in settings.json so tray labels and
+    /// window titles created by Rust can match the frontend on every launch.
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_language() -> String {
+    "en".to_string()
 }
 
 pub struct SettingsStore {
@@ -60,6 +75,58 @@ impl SettingsStore {
         {
             let mut data = self.data.lock().map_err(|e| e.to_string())?;
             data.vault_path = path;
+        }
+        self.save()
+    }
+
+    pub fn snapshot(&self) -> Result<Settings, String> {
+        self.data.lock().map(|d| d.clone()).map_err(|e| e.to_string())
+    }
+
+    pub fn edge_dock_enabled(&self) -> bool {
+        self.data.lock().map(|d| d.edge_dock_enabled).unwrap_or(false)
+    }
+
+    pub fn set_edge_dock_enabled(&self, enabled: bool) -> Result<(), String> {
+        {
+            let mut data = self.data.lock().map_err(|e| e.to_string())?;
+            data.edge_dock_enabled = enabled;
+        }
+        self.save()
+    }
+
+    pub fn auto_start(&self) -> bool {
+        self.data.lock().map(|d| d.auto_start).unwrap_or(false)
+    }
+
+    pub fn set_auto_start(&self, enabled: bool) -> Result<(), String> {
+        {
+            let mut data = self.data.lock().map_err(|e| e.to_string())?;
+            data.auto_start = enabled;
+        }
+        self.save()
+    }
+
+    pub fn language(&self) -> String {
+        let lang = self
+            .data
+            .lock()
+            .map(|d| d.language.clone())
+            .unwrap_or_else(|_| "zh".to_string());
+        if lang == "en" {
+            "en".to_string()
+        } else {
+            "zh".to_string()
+        }
+    }
+
+    pub fn set_language(&self, language: String) -> Result<(), String> {
+        if language != "zh" && language != "en" {
+            return Err("Unsupported language".to_string());
+        }
+        {
+            let mut data = self.data.lock().map_err(|e| e.to_string())?;
+            data.language = language;
         }
         self.save()
     }

@@ -1,5 +1,7 @@
 mod commands;
+mod edge_dock;
 mod hotkey;
+mod i18n;
 mod settings;
 mod storage;
 mod sync;
@@ -10,6 +12,7 @@ use commands::*;
 use settings::SettingsStore;
 use storage::NotesStorage;
 use tauri::Manager;
+use tauri_plugin_autostart::MacosLauncher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -31,9 +34,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None::<Vec<&str>>))
         .manage(NotesStorage::new())
         .manage(SettingsStore::new())
         .invoke_handler(tauri::generate_handler![
+            get_settings,
+            set_language,
             create_note,
             update_note,
             delete_note,
@@ -52,11 +58,30 @@ pub fn run() {
             get_sync_status,
             sync_obsidian_now,
             get_vault_templates,
+            edge_dock::snap_note_to_edge,
+            edge_dock::reveal_docked_note,
         ])
         .setup(|app| {
             // Set up system tray
             if let Err(e) = tray::setup_tray(app.handle()) {
                 eprintln!("Failed to setup tray: {}", e);
+            }
+
+            // Keep the OS autostart entry in sync with the setting on every launch.
+            // Windows auto-launch can silently drop the registry entry after one
+            // boot (tauri plugins-workspace #771); re-enabling here heals it.
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                let settings = app.state::<SettingsStore>();
+                let manager = app.autolaunch();
+                let desired = settings.auto_start();
+                let actual = manager.is_enabled().unwrap_or(false);
+                if desired != actual {
+                    let result = if desired { manager.enable() } else { manager.disable() };
+                    if let Err(e) = result {
+                        eprintln!("Failed to sync auto start: {}", e);
+                    }
+                }
             }
 
             // Register global hotkey (Alt+Shift+N)

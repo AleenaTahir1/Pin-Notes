@@ -6,6 +6,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { Note, NoteTemplate, NOTE_TEMPLATES, applyTemplatePlaceholders } from '../types';
 import { UpdateChecker } from './UpdateChecker';
 import { useTheme, toggleTheme } from '../store/theme';
+import { useI18n } from '../store/i18n';
 
 export function NotesList() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -15,6 +16,7 @@ export function NotesList() {
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [vaultTemplates, setVaultTemplates] = useState<NoteTemplate[]>([]);
   const theme = useTheme();
+  const { t, lang } = useI18n();
 
   // Load whether an Obsidian vault is connected
   useEffect(() => {
@@ -34,6 +36,11 @@ export function NotesList() {
     document.documentElement.style.background = bg;
     document.body.style.background = bg;
   }, [theme]);
+
+  // Keep the OS window title in the active language.
+  useEffect(() => {
+    getCurrentWindow().setTitle(t('app.listTitle')).catch(() => {});
+  }, [lang, t]);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -152,16 +159,16 @@ export function NotesList() {
     try {
       const dir = await open({
         directory: true,
-        title: 'Choose your Obsidian vault folder (notes sync both ways)',
+        title: t('notesList.chooseVault'),
       });
       if (typeof dir !== 'string') return; // cancelled
       const count = await invoke<number>('set_obsidian_vault', { dir });
       setVaultPath(dir);
       loadNotes();
-      showToast(`Synced ${count} note${count === 1 ? '' : 's'} — editing now works both ways`);
+      showToast(count === 1 ? t('notesList.syncOne') : t('notesList.syncOther', { count }));
     } catch (error) {
       console.error('[Pin Notes] Failed to connect Obsidian vault:', error);
-      showToast('Could not connect vault — see console');
+      showToast(t('notesList.connectFailed'));
     }
   };
 
@@ -169,7 +176,7 @@ export function NotesList() {
     try {
       await invoke('disconnect_obsidian');
       setVaultPath(null);
-      showToast('Disconnected from Obsidian (files kept)');
+      showToast(t('notesList.disconnected'));
     } catch (error) {
       console.error('[Pin Notes] Failed to disconnect:', error);
     }
@@ -212,33 +219,33 @@ export function NotesList() {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
+    if (mins < 1) return t('notesList.justNow');
+    if (mins < 60) return t('notesList.minutesAgo', { count: mins });
+    if (hours < 24) return t('notesList.hoursAgo', { count: hours });
+    if (days < 7) return t('notesList.daysAgo', { count: days });
     return date.toLocaleDateString();
   };
 
   const getPreview = (content: string) => {
     const firstLine = content.split('\n').find(line => line.trim() !== '');
-    if (!firstLine) return 'Empty note';
+    if (!firstLine) return t('notesList.emptyNote');
     const clean = firstLine
       .replace(/==\{\w+\}/g, '')
       .replace(/==/g, '')
       .replace(/[#*_~`]/g, '')
       .trim();
-    return clean || 'Empty note';
+    return clean || t('notesList.emptyNote');
   };
 
   return (
     <div className="notes-list-window">
       <div className="notes-list-header" onMouseDown={handleDrag}>
-        <span className="notes-list-title">Notes</span>
+        <span className="notes-list-title">{t('notesList.title')}</span>
         <div className="notes-list-actions">
           <motion.button
             className={`notes-list-theme-btn obsidian-btn ${vaultPath ? 'connected' : ''}`}
             onClick={vaultPath ? handleDisconnectObsidian : handleConnectObsidian}
-            title={vaultPath ? 'Disconnect from Obsidian' : 'Connect to Obsidian'}
+            title={vaultPath ? t('notesList.disconnectObsidian') : t('notesList.connectObsidian')}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
@@ -260,7 +267,7 @@ export function NotesList() {
           <motion.button
             className="notes-list-theme-btn"
             onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? t('notesList.switchToLight') : t('notesList.switchToDark')}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
@@ -289,7 +296,7 @@ export function NotesList() {
                 e.stopPropagation();
                 toggleNewMenu();
               }}
-              title="New note / from template"
+              title={t('notesList.newNoteTitle')}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -306,19 +313,19 @@ export function NotesList() {
                   transition={{ duration: 0.12 }}
                 >
                   <button className="new-note-item" onClick={() => handleCreate()}>
-                    <span className="new-note-item-icon">＋</span> Blank note
+                    <span className="new-note-item-icon">＋</span> {t('notesList.blankNote')}
                   </button>
-                  <div className="new-note-divider">Templates</div>
-                  {NOTE_TEMPLATES.map((t) => (
+                  <div className="new-note-divider">{t('notesList.templates')}</div>
+                  {NOTE_TEMPLATES.map((tpl) => (
                     <button
-                      key={t.name}
+                      key={tpl.nameKey}
                       className="new-note-item"
-                      onClick={() => handleCreate(applyTemplatePlaceholders(t.content))}
+                      onClick={() => handleCreate(applyTemplatePlaceholders(tpl.content[lang]))}
                     >
-                      <span className="new-note-item-icon">▤</span> {t.name}
+                      <span className="new-note-item-icon">▤</span> {t(tpl.nameKey)}
                     </button>
                   ))}
-                  <div className="new-note-divider">From your vault</div>
+                  <div className="new-note-divider">{t('notesList.fromVault')}</div>
                   {vaultTemplates.length > 0 ? (
                     vaultTemplates.map((t) => (
                       <button
@@ -331,8 +338,7 @@ export function NotesList() {
                     ))
                   ) : vaultPath ? (
                     <div className="new-note-hint">
-                      Drop <b>.md</b> files into a <b>Templates</b> folder in your vault to use
-                      your own here.
+                      {t('notesList.vaultHintStart')}<b>.md</b>{t('notesList.vaultHintMiddle')}<b>Templates</b>{t('notesList.vaultHintEnd')}
                     </div>
                   ) : (
                     <button
@@ -342,7 +348,7 @@ export function NotesList() {
                         handleConnectObsidian();
                       }}
                     >
-                      Connect an Obsidian vault to use your own templates →
+                      {t('notesList.connectVaultCta')}
                     </button>
                   )}
                 </motion.div>
@@ -352,7 +358,7 @@ export function NotesList() {
           <motion.button
             className="notes-list-minimize-btn"
             onClick={handleMinimize}
-            title="Minimize"
+            title={t('notesList.minimize')}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
@@ -363,7 +369,7 @@ export function NotesList() {
           <motion.button
             className="notes-list-close-btn"
             onClick={handleClose}
-            title="Close"
+            title={t('notesList.close')}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
@@ -383,7 +389,7 @@ export function NotesList() {
         <input
           className="notes-list-search-input"
           type="text"
-          placeholder="Search notes..."
+          placeholder={t('notesList.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           spellCheck={false}
@@ -392,7 +398,7 @@ export function NotesList() {
           <button
             className="notes-list-search-clear"
             onClick={() => setSearch('')}
-            title="Clear search"
+            title={t('notesList.clearSearch')}
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -413,14 +419,14 @@ export function NotesList() {
             {notes.length === 0 ? (
               <>
                 <div className="notes-list-empty-icon">📝</div>
-                <span>No notes yet</span>
-                <span className="notes-list-empty-hint">Click + to create your first note</span>
+                <span>{t('notesList.noNotes')}</span>
+                <span className="notes-list-empty-hint">{t('notesList.noNotesHint')}</span>
               </>
             ) : (
               <>
                 <div className="notes-list-empty-icon">🔍</div>
-                <span>No matches</span>
-                <span className="notes-list-empty-hint">Try a different search term</span>
+                <span>{t('notesList.noMatches')}</span>
+                <span className="notes-list-empty-hint">{t('notesList.noMatchesHint')}</span>
               </>
             )}
           </motion.div>
@@ -448,7 +454,7 @@ export function NotesList() {
                     e.stopPropagation();
                     handleTogglePin(note.id);
                   }}
-                  title={note.is_pinned ? 'Unpin note' : 'Pin note'}
+                  title={note.is_pinned ? t('notesList.unpin') : t('notesList.pin')}
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.8 }}
                 >
@@ -462,7 +468,7 @@ export function NotesList() {
                     {getPreview(note.content)}
                   </div>
                   <div className="notes-list-item-date">
-                    {note.is_pinned && <span className="notes-list-pin-label">Pinned</span>}
+                    {note.is_pinned && <span className="notes-list-pin-label">{t('notesList.pinned')}</span>}
                     {formatDate(note.updated_at)}
                   </div>
                 </div>
@@ -472,7 +478,7 @@ export function NotesList() {
                     e.stopPropagation();
                     handleDeleteNote(note.id);
                   }}
-                  title="Delete"
+                  title={t('notesList.delete')}
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.8 }}
                 >

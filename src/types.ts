@@ -1,3 +1,5 @@
+import type { Language, MessageKey } from './store/i18n';
+
 export interface Note {
   id: string;
   content: string;
@@ -72,9 +74,9 @@ export type HighlighterColor = keyof typeof HIGHLIGHTER_COLORS;
 
 // Available fonts for notes
 export const NOTE_FONTS = [
-  { name: 'Handwriting', value: "'Caveat', 'Patrick Hand', cursive" },
-  { name: 'Clean', value: "'Segoe UI', system-ui, sans-serif" },
-  { name: 'Mono', value: "'Cascadia Code', 'Fira Code', monospace" },
+  { nameKey: 'font.handwriting', value: "'Caveat', 'Patrick Hand', cursive" },
+  { nameKey: 'font.clean', value: "'Segoe UI', system-ui, sans-serif" },
+  { nameKey: 'font.mono', value: "'Cascadia Code', 'Fira Code', monospace" },
 ] as const;
 
 // Note templates — quick starting points. `{{date}}` / `{{time}}` are filled in at
@@ -86,51 +88,86 @@ export interface NoteTemplate {
   builtin?: boolean;
 }
 
-export const NOTE_TEMPLATES: NoteTemplate[] = [
+// Built-in templates are translated: `nameKey` is the i18n key, `content` holds
+// one localized starting document per language.
+export interface BuiltinTemplate {
+  nameKey: MessageKey;
+  content: Record<Language, string>;
+  builtin: true;
+}
+
+export const NOTE_TEMPLATES: BuiltinTemplate[] = [
   {
-    name: 'To-do list',
+    nameKey: 'template.todo',
     builtin: true,
-    content: '# To-do\n\n- [ ] \n- [ ] \n- [ ] ',
+    content: {
+      zh: '# 待办事项\n\n- [ ] \n- [ ] \n- [ ] ',
+      en: '# To-do\n\n- [ ] \n- [ ] \n- [ ] ',
+    },
   },
   {
-    name: 'Daily note',
+    nameKey: 'template.daily',
     builtin: true,
-    content: '# {{date}}\n\n## Focus\n\n## Notes\n\n## Done\n',
+    content: {
+      zh: '# {{date}}\n\n## 今日重点\n\n## 记录\n\n## 已完成\n',
+      en: '# {{date}}\n\n## Focus\n\n## Notes\n\n## Done\n',
+    },
   },
   {
-    name: 'Meeting notes',
+    nameKey: 'template.meeting',
     builtin: true,
-    content: '# Meeting — {{date}}\n\nAttendees: \n\n## Agenda\n- \n\n## Notes\n\n## Action items\n- [ ] ',
+    content: {
+      zh: '# 会议 — {{date}}\n\n参会人员：\n\n## 议程\n- \n\n## 记录\n\n## 待办事项\n- [ ] ',
+      en: '# Meeting — {{date}}\n\nAttendees: \n\n## Agenda\n- \n\n## Notes\n\n## Action items\n- [ ] ',
+    },
   },
   {
-    name: 'Project plan',
+    nameKey: 'template.project',
     builtin: true,
-    content: '# Project: \n\n## Goal\n\n## Milestones\n- [ ] \n- [ ] \n\n## Notes\n',
+    content: {
+      zh: '# 项目：\n\n## 目标\n\n## 里程碑\n- [ ] \n- [ ] \n\n## 记录\n',
+      en: '# Project: \n\n## Goal\n\n## Milestones\n- [ ] \n- [ ] \n\n## Notes\n',
+    },
   },
   {
-    name: 'Habit tracker',
+    nameKey: 'template.habit',
     builtin: true,
-    content: '# Habits — {{date}}\n\n- [ ] Water\n- [ ] Exercise\n- [ ] Read\n- [ ] Sleep 8h',
+    content: {
+      zh: '# 习惯 — {{date}}\n\n- [ ] 喝水\n- [ ] 运动\n- [ ] 阅读\n- [ ] 睡眠 8 小时',
+      en: '# Habits — {{date}}\n\n- [ ] Water\n- [ ] Exercise\n- [ ] Read\n- [ ] Sleep 8h',
+    },
   },
   {
-    name: 'Book notes',
+    nameKey: 'template.book',
     builtin: true,
-    content: '# Book: \n\nAuthor: \n\n## Key ideas\n- \n\n## Quotes\n> \n\n## Takeaways\n- ',
+    content: {
+      zh: '# 书名：\n\n作者：\n\n## 核心观点\n- \n\n## 摘录\n> \n\n## 收获\n- ',
+      en: '# Book: \n\nAuthor: \n\n## Key ideas\n- \n\n## Quotes\n> \n\n## Takeaways\n- ',
+    },
   },
   {
-    name: 'Pros & cons',
+    nameKey: 'template.prosCons',
     builtin: true,
-    content: '# Decision: \n\n## Pros\n- \n\n## Cons\n- ',
+    content: {
+      zh: '# 决策：\n\n## 优点\n- \n\n## 缺点\n- ',
+      en: '# Decision: \n\n## Pros\n- \n\n## Cons\n- ',
+    },
   },
   {
-    name: 'Grocery list',
+    nameKey: 'template.grocery',
     builtin: true,
-    content: '# Groceries\n\n- [ ] \n- [ ] \n- [ ] ',
+    content: {
+      zh: '# 购物清单\n\n- [ ] \n- [ ] \n- [ ] ',
+      en: '# Groceries\n\n- [ ] \n- [ ] \n- [ ] ',
+    },
   },
   {
-    name: 'Quick bullets',
+    nameKey: 'template.quick',
     builtin: true,
-    content: '- \n- \n- ',
+    content: {
+      zh: '- \n- \n- ',
+      en: '- \n- \n- ',
+    },
   },
 ];
 
