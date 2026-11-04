@@ -1,14 +1,11 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import { Note, HighlighterColor, getRandomRotation } from '../types';
+import { Note, normalizeTaskShorthand } from '../types';
 
 interface NoteStore {
   note: Note | null;
-  isEditing: boolean;
   isLoading: boolean;
   error: string | null;
-  highlighterColor: HighlighterColor | null;
-  rotation: number;
 
   loadNote: (id: string) => Promise<void>;
   setContent: (content: string) => void;
@@ -16,31 +13,28 @@ interface NoteStore {
   setFont: (font: string) => void;
   setFontSize: (size: number) => void;
   setSize: (width: number, height: number) => void;
-  toggleEditing: () => void;
-  setHighlighterColor: (color: HighlighterColor | null) => void;
+  setOnTop: (onTop: boolean) => Promise<void>;
   save: () => Promise<void>;
   pullExternal: () => Promise<void>;
-  clearNote: () => Promise<void>;
-  deleteNote: () => Promise<void>;
   closeNote: () => Promise<void>;
 }
 
+// Typing is sent to the app shortly after a pause. That only updates memory (the app
+// writes to disk in the background), so this can be short.
+const SAVE_DELAY_MS = 150;
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export const useNoteStore = create<NoteStore>((set, get) => ({
   note: null,
-  isEditing: true,
   isLoading: true,
   error: null,
-  highlighterColor: null,
-  rotation: getRandomRotation(),
 
   loadNote: async (id: string) => {
     try {
       set({ isLoading: true, error: null });
       const note = await invoke<Note | null>('get_note', { id });
       if (note) {
-        set({ note, isLoading: false });
+        set({ note: { ...note, content: normalizeTaskShorthand(note.content) }, isLoading: false });
       } else {
         set({ error: 'Note not found', isLoading: false });
       }
@@ -60,8 +54,9 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       clearTimeout(saveTimeout);
     }
     saveTimeout = setTimeout(() => {
+      saveTimeout = null;
       get().save();
-    }, 100);
+    }, SAVE_DELAY_MS);
   },
 
   setColor: (color: string) => {
@@ -101,12 +96,15 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     get().save();
   },
 
-  toggleEditing: () => {
-    set((state) => ({ isEditing: !state.isEditing }));
-  },
-
-  setHighlighterColor: (color: HighlighterColor | null) => {
-    set({ highlighterColor: color });
+  setOnTop: async (onTop: boolean) => {
+    const { note } = get();
+    if (!note) return;
+    set({ note: { ...note, always_on_top: onTop } });
+    try {
+      await invoke('set_note_on_top', { id: note.id, onTop });
+    } catch (error) {
+      console.error('[Pin Notes] Failed to change keep-on-top:', error);
+    }
   },
 
   save: async () => {
@@ -129,39 +127,23 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     try {
       const fresh = await invoke<Note | null>('get_note', { id: note.id });
       if (fresh && fresh.content !== note.content) {
-        set({ note: fresh });
+        set({ note: { ...note, content: fresh.content, updated_at: fresh.updated_at } });
       }
     } catch (error) {
       console.warn('[Pin Notes] External refresh failed:', error);
     }
   },
 
-  clearNote: async () => {
-    const { note } = get();
-    if (!note) return;
-
-    try {
-      const cleared = await invoke<Note>('clear_note', { id: note.id });
-      set({ note: cleared, isEditing: true });
-    } catch (error) {
-      console.error('[Pin Notes] Failed to clear note:', error);
-    }
-  },
-
-  deleteNote: async () => {
-    const { note } = get();
-    if (!note) return;
-
-    try {
-      await invoke('delete_note', { id: note.id });
-    } catch (error) {
-      console.error('[Pin Notes] Failed to delete note:', error);
-    }
-  },
-
   closeNote: async () => {
     const { note } = get();
     if (!note) return;
+
+    // Send any typing that hasn't been saved yet before the window goes away.
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+      saveTimeout = null;
+    }
+    await get().save();
 
     try {
       await invoke('close_note', { id: note.id });

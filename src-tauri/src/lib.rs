@@ -9,7 +9,7 @@ mod window;
 use commands::*;
 use settings::SettingsStore;
 use storage::NotesStorage;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -37,15 +37,13 @@ pub fn run() {
             create_note,
             update_note,
             delete_note,
-            clear_note,
             open_note,
             open_notes_list,
             get_all_notes,
             get_note,
-            update_note_position,
-            update_note_size,
             close_note,
             toggle_pin_note,
+            set_note_on_top,
             show_all_notes,
             set_obsidian_vault,
             disconnect_obsidian,
@@ -74,6 +72,33 @@ pub fn run() {
                 eprintln!("Failed to restore notes: {}", e);
             }
 
+            // Background writer: edits only touch memory; this saves them (atomically) a
+            // few hundred ms later, mirrors changed notes to Obsidian, and tells the notes
+            // list to refresh. Typing never waits on the disk.
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_millis(400));
+                    let storage = handle.state::<NotesStorage>();
+                    match storage.flush() {
+                        Ok(true) => {
+                            let ids = storage.take_changed_ids();
+                            if let Some(vault) = handle.state::<SettingsStore>().vault_path() {
+                                let vault = std::path::Path::new(&vault);
+                                for id in &ids {
+                                    if let Ok(Some(note)) = storage.get_note(id) {
+                                        let _ = sync::write_note_file(vault, &note);
+                                    }
+                                }
+                            }
+                            let _ = handle.emit_to("notes-list", "notes-changed", ());
+                        }
+                        Ok(false) => {}
+                        Err(e) => eprintln!("[Pin Notes] Saving notes failed (will retry): {}", e),
+                    }
+                });
+            }
+
             // Background Obsidian sync: every few seconds reconcile storage with the
             // connected vault (no-op when no vault is configured). This is what pulls
             // edits made inside Obsidian back into Pin Notes.
@@ -93,7 +118,7 @@ pub fn run() {
             if let Some(storage) = app.try_state::<NotesStorage>() {
                 if let Ok(notes) = storage.get_all_notes() {
                     if notes.is_empty() {
-                        if let Err(e) = window::spawn_new_note_at_cursor(app.handle()) {
+                        if let Err(e) = window::spawn_new_note(app.handle(), None) {
                             eprintln!("Failed to create initial note: {}", e);
                         }
                     }
@@ -104,8 +129,8 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
-        .run(|_app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { code, api, .. } = event {
+        .run(|app_handle, event| match event {
+            tauri::RunEvent::ExitRequested { code, api, .. } => {
                 // Keep the app alive in the tray ONLY when it's the windows closing
                 // (code == None) — so global shortcuts keep working. An explicit Quit
                 // from the tray calls `app.exit(0)`, which sets code == Some(0); in that
@@ -114,5 +139,12 @@ pub fn run() {
                     api.prevent_exit();
                 }
             }
+            // Last chance to write anything typed in the final few hundred ms.
+            tauri::RunEvent::Exit => {
+                if let Err(e) = app_handle.state::<NotesStorage>().flush() {
+                    eprintln!("[Pin Notes] Final save failed: {}", e);
+                }
+            }
+            _ => {}
         });
 }

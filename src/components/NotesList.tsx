@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Note, NoteTemplate, NOTE_TEMPLATES, applyTemplatePlaceholders } from '../types';
@@ -55,10 +56,12 @@ export function NotesList() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [loadNotes]);
 
-  // Auto-refresh every 2s so list stays current as notes are edited
+  // The app tells the list when notes were saved, so it stays current without polling.
   useEffect(() => {
-    const interval = setInterval(loadNotes, 2000);
-    return () => clearInterval(interval);
+    const unlisten = listen('notes-changed', () => loadNotes());
+    return () => {
+      unlisten.then((un) => un()).catch(() => {});
+    };
   }, [loadNotes]);
 
   // Filter by search, then sort: pinned first, then by updated_at
@@ -76,7 +79,7 @@ export function NotesList() {
       });
     }
 
-    result.sort((a, b) => {
+    result = [...result].sort((a, b) => {
       if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
       return b.updated_at - a.updated_at;
     });
@@ -87,12 +90,7 @@ export function NotesList() {
   const handleCreate = async (content?: string) => {
     setShowNewMenu(false);
     try {
-      await invoke('create_note', {
-        color: '#fff9c4',
-        positionX: 200,
-        positionY: 200,
-        content: content ?? null,
-      });
+      await invoke('create_note', { content: content ?? null });
       // Minimize the list after creating a note — don't close it, so it stays one click away
       const win = getCurrentWindow();
       await win.minimize();

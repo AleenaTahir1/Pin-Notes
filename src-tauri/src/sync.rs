@@ -31,10 +31,6 @@ struct Parsed {
     body: String,
 }
 
-fn now() -> i64 {
-    chrono::Utc::now().timestamp()
-}
-
 fn fmt_date(ts: i64) -> String {
     chrono::DateTime::from_timestamp(ts, 0)
         .map(|dt| dt.format("%Y-%m-%d").to_string())
@@ -51,9 +47,9 @@ pub fn to_obsidian_body(content: &str) -> String {
     let mut i = 0;
     while i < content.len() {
         let rest = &content[i..];
-        if rest.starts_with("=={") {
-            if let Some(rel) = rest[3..].find('}') {
-                let tag = &rest[3..3 + rel];
+        if let Some(after) = rest.strip_prefix("=={") {
+            if let Some(rel) = after.find('}') {
+                let tag = &after[..rel];
                 if !tag.is_empty() && tag.chars().all(|c| c.is_ascii_alphanumeric()) {
                     out.push_str("==");
                     i += 3 + rel + 1; // skip `=={tag}`
@@ -69,25 +65,37 @@ pub fn to_obsidian_body(content: &str) -> String {
 }
 
 /// Obsidian `==text==` -> Pin Notes `=={yellow}text==` (color info is gone, so default).
-/// Already-tagged `=={color}` openings are left untouched.
+/// Already-tagged `=={color}` openings are left untouched. Like the editor, a `==` only
+/// opens a highlight when text follows it directly and a closing `==` (with text right
+/// before it) exists on the same line, so `a == b` is left alone.
 pub fn from_obsidian_body(md: &str) -> String {
-    let mut out = String::with_capacity(md.len());
+    md.split('\n').map(highlight_line).collect::<Vec<_>>().join("\n")
+}
+
+fn highlight_line(line: &str) -> String {
+    let chars: Vec<char> = line.chars().collect();
+    let is_run = |i: usize| i + 1 < chars.len() && chars[i] == '=' && chars[i + 1] == '=';
+    // A lone "==" (not part of "===" or longer).
+    let lone = |i: usize| is_run(i) && (i == 0 || chars[i - 1] != '=') && chars.get(i + 2) != Some(&'=');
+    let mut out = String::with_capacity(line.len() + 16);
     let mut i = 0;
-    let mut opening = true; // toggles on each `==`
-    while i < md.len() {
-        let rest = &md[i..];
-        if rest.starts_with("==") {
-            out.push_str("==");
-            i += 2;
-            if opening && !md[i..].starts_with('{') {
-                out.push_str("{yellow}");
+    while i < chars.len() {
+        if lone(i) && chars.get(i + 2).is_some_and(|c| !c.is_whitespace()) {
+            // Find the closing "==" with non-space text right before it.
+            let close = (i + 3..chars.len()).find(|&j| lone(j) && !chars[j - 1].is_whitespace());
+            if let Some(j) = close {
+                out.push_str("==");
+                if chars[i + 2] != '{' {
+                    out.push_str("{yellow}");
+                }
+                out.extend(&chars[i + 2..j]);
+                out.push_str("==");
+                i = j + 2;
+                continue;
             }
-            opening = !opening;
-            continue;
         }
-        let ch = rest.chars().next().unwrap();
-        out.push(ch);
-        i += ch.len_utf8();
+        out.push(chars[i]);
+        i += 1;
     }
     out
 }
@@ -110,9 +118,19 @@ fn sanitize_filename(title: &str) -> String {
         .collect();
     let s = s.trim().trim_matches('.').trim();
     if s.is_empty() {
-        "Untitled Note".to_string()
+        return "Untitled Note".to_string();
+    }
+    let s: String = s.chars().take(60).collect();
+    // Windows can't create files named after devices (CON, NUL, COM1 ...).
+    let stem = s.split('.').next().unwrap_or("").trim().to_ascii_uppercase();
+    let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.len() == 4
+            && stem.as_bytes()[3].is_ascii_digit());
+    if reserved {
+        format!("{} note", s)
     } else {
-        s.chars().take(60).collect()
+        s
     }
 }
 
@@ -289,11 +307,13 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                     if parsed.body.trim_end() != current.trim_end() {
                         let fmtime = file_mtime_secs(path);
                         if fmtime > note.updated_at {
-                            // Obsidian edit wins.
-                            let mut updated = note.clone();
-                            updated.content = from_obsidian_body(parsed.body.trim_end());
-                            updated.updated_at = fmtime;
-                            if storage.update_note(updated).is_ok() {
+                            // Obsidian edit wins. Only the text changes, so a stale snapshot
+                            // can't undo a color/size/position change made meanwhile.
+                            let body = from_obsidian_body(parsed.body.trim_end());
+                            if let Ok(Some(_)) = storage.update_note_with(pid, false, |n| {
+                                n.content = body;
+                                n.updated_at = fmtime;
+                            }) {
                                 changed = true;
                             }
                         } else {
@@ -303,21 +323,15 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                     }
                 } else {
                     // File carries a pin_id we don't know — adopt it as a new note.
-                    let new = Note {
-                        id: pid.clone(),
-                        content: from_obsidian_body(parsed.body.trim_end()),
-                        color: parsed.color.clone().unwrap_or_else(|| DEFAULT_COLOR.into()),
-                        position_x: 200,
-                        position_y: 200,
-                        width: 280,
-                        height: 320,
-                        created_at: now(),
-                        updated_at: now(),
-                        is_visible: false,
-                        is_pinned: parsed.pinned,
-                        font: String::new(),
-                        font_size: 0,
-                    };
+                    let mut new = Note::new(
+                        pid.clone(),
+                        parsed.color.clone().unwrap_or_else(|| DEFAULT_COLOR.into()),
+                        200,
+                        200,
+                    );
+                    new.content = from_obsidian_body(parsed.body.trim_end());
+                    new.is_visible = false;
+                    new.is_pinned = parsed.pinned;
                     if storage.create_note(new).is_ok() {
                         changed = true;
                     }
@@ -327,21 +341,15 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                 // A brand-new note authored inside Obsidian — create it, then stamp the
                 // pin_id back into the file so it's tracked from now on.
                 let id = uuid::Uuid::new_v4().to_string();
-                let note = Note {
-                    id: id.clone(),
-                    content: from_obsidian_body(parsed.body.trim_end()),
-                    color: parsed.color.clone().unwrap_or_else(|| DEFAULT_COLOR.into()),
-                    position_x: 200,
-                    position_y: 200,
-                    width: 280,
-                    height: 320,
-                    created_at: now(),
-                    updated_at: now(),
-                    is_visible: false,
-                    is_pinned: parsed.pinned,
-                    font: String::new(),
-                    font_size: 0,
-                };
+                let mut note = Note::new(
+                    id.clone(),
+                    parsed.color.clone().unwrap_or_else(|| DEFAULT_COLOR.into()),
+                    200,
+                    200,
+                );
+                note.content = from_obsidian_body(parsed.body.trim_end());
+                note.is_visible = false;
+                note.is_pinned = parsed.pinned;
                 if storage.create_note(note.clone()).is_ok() {
                     let _ = fs::remove_file(path); // old untracked name
                     let _ = write_note_file(vault, &note);
@@ -361,4 +369,92 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
     }
 
     changed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn highlight_colors_strip_and_restore() {
+        assert_eq!(to_obsidian_body("a =={pink}b== c"), "a ==b== c");
+        assert_eq!(from_obsidian_body("a ==b== c"), "a =={yellow}b== c");
+        assert_eq!(from_obsidian_body("=={pink}b=="), "=={pink}b==");
+    }
+
+    #[test]
+    fn unicode_bodies_survive() {
+        let s = "café 😀 日本語 =={blue}hé==";
+        assert_eq!(from_obsidian_body(&to_obsidian_body(s)), "café 😀 日本語 =={yellow}hé==");
+    }
+
+    /// BUG: any literal `==` (code, maths) coming back from Obsidian gets `{yellow}` injected.
+    #[test]
+    fn plain_double_equals_is_not_a_highlight() {
+        assert_eq!(from_obsidian_body("if a == b {"), "if a == b {");
+    }
+
+    #[test]
+    fn front_matter_parsed_and_extra_keys_kept() {
+        let p = parse_md("---\npin_id: abc\ncolor: \"#fff\"\npinned: true\ntags: [x]\n---\n\nbody\n");
+        assert_eq!(p.pin_id.as_deref(), Some("abc"));
+        assert_eq!(p.color.as_deref(), Some("#fff"));
+        assert!(p.pinned);
+        assert_eq!(p.extra_fm, vec!["tags: [x]".to_string()]);
+        assert_eq!(p.body, "body\n");
+    }
+
+    #[test]
+    fn windows_line_endings_front_matter() {
+        let p = parse_md("---\r\npin_id: abc\r\n---\r\n\r\nbody");
+        assert_eq!(p.pin_id.as_deref(), Some("abc"));
+        assert_eq!(p.body, "body");
+    }
+
+    #[test]
+    fn filenames_are_safe() {
+        assert_eq!(sanitize_filename("a/b:c*?\"<>|"), "a-b-c------");
+        assert_eq!(sanitize_filename("   "), "Untitled Note");
+        assert_eq!(sanitize_filename("..."), "Untitled Note");
+        assert_eq!(sanitize_filename(&"x".repeat(200)).len(), 60);
+        assert_eq!(note_title("# **Hello** ==world=="), "Hello  world");
+    }
+
+    #[test]
+    fn highlights_with_triple_equals_and_unclosed_runs_are_left_alone() {
+        assert_eq!(from_obsidian_body("a === b"), "a === b");
+        assert_eq!(from_obsidian_body("==open only"), "==open only");
+        assert_eq!(from_obsidian_body("x ==hi== and ==yo=="), "x =={yellow}hi== and =={yellow}yo==");
+        assert_eq!(from_obsidian_body("line1 ==a\nb=="), "line1 ==a\nb==");
+    }
+
+    #[test]
+    fn sync_pulls_obsidian_edits_without_touching_other_fields() {
+        let dir = std::env::temp_dir().join(format!("pinnotes-sync-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let vault = dir.join("vault");
+        fs::create_dir_all(&vault).unwrap();
+        let storage = NotesStorage::at(dir.join("notes.json"));
+        let mut n = Note::new("id-1".into(), "#fff".into(), 0, 0);
+        n.content = "Hello".into();
+        n.updated_at = 0; // older than any file
+        storage.create_note(n.clone()).unwrap();
+        write_note_file(&vault, &n).unwrap();
+        // Meanwhile the app moved the note; then Obsidian edits the text.
+        storage.update_note_with("id-1", false, |x| x.position_x = 777).unwrap();
+        let path = vault.join("Hello.md");
+        let text = fs::read_to_string(&path).unwrap().replace("Hello", "Hello from Obsidian");
+        fs::write(&path, text).unwrap();
+        assert!(sync_once(&storage, &vault));
+        let got = storage.get_note("id-1").unwrap().unwrap();
+        assert_eq!(got.content, "Hello from Obsidian");
+        assert_eq!(got.position_x, 777);
+    }
+
+    /// Windows refuses reserved device names like CON / NUL / COM1 as file names.
+    #[test]
+    fn reserved_windows_names_are_avoided() {
+        let n = sanitize_filename("CON");
+        assert_ne!(n.to_uppercase(), "CON");
+    }
 }

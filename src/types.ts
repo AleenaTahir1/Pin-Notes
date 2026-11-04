@@ -14,6 +14,8 @@ export interface Note {
   font?: string;
   // Remembered text size in px. 0/undefined = default (DEFAULT_FONT_SIZE).
   font_size?: number;
+  // Float above other windows (default) or behave like a normal window.
+  always_on_top?: boolean;
 }
 
 // Does this note contain markdown worth a preview toggle? Plain notes return false,
@@ -25,8 +27,14 @@ export function hasMarkdown(content: string): boolean {
   // Task checkbox: - [ ] / - [x] (space after the dash optional)
   if (/[-*]\s*\[[ xX]\]/.test(content)) return true;
   // Inline: **bold**, ~~strike~~, `code`, ==highlight==
-  if (/\*\*[^*\n]+\*\*|~~[^~\n]+~~|`[^`\n]+`|==[^\n]+==/.test(content)) return true;
+  // (a highlight can't start or end with a space, so `a == b` is not one)
+  if (/\*\*[^*\n]+\*\*|~~[^~\n]+~~|`[^`\n]+`|==(\{\w+\})?[^\s=]([^\n]*?[^\s=])?==/.test(content)) return true;
   return false;
+}
+
+// Older notes may use the "-[ ]" checkbox shorthand; standard markdown needs "- [ ]".
+export function normalizeTaskShorthand(content: string): string {
+  return content.replace(/^(\s*[-*+])\[([ xX])\]/gm, '$1 [$2]');
 }
 
 // Per-note text size — two buttons (A− / A+) step through these presets, clamped.

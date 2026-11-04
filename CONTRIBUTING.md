@@ -154,9 +154,12 @@ Remove deprecated font option
 Before submitting a PR:
 
 1. Ensure the app builds: `npm run build`
-2. Test in development: `npm run tauri dev`
-3. Test the production build: `npm run tauri build`
-4. Test with various note colors, fonts, and highlighter combinations
+2. Run the unit tests: `npm test` (editor, markdown, highlights) and `cd src-tauri && cargo test` (storage, Obsidian sync)
+3. Test in development: `npm run tauri dev`. To try the UI in a plain browser instead, run `npm run dev` and open `http://localhost:1420/?noteId=demo` or `/?view=list` (the backend is faked in memory by `src/dev/mockTauri.ts`)
+4. Test the production build: `npm run tauri build`
+5. Test with various note colors, fonts, and highlighter combinations
+
+To keep a test run away from your real notes, set `PIN_NOTES_DATA_DIR` to an empty folder before `npm run tauri dev`.
 
 ## Getting Help
 

@@ -1,6 +1,5 @@
-use directories::ProjectDirs;
+use crate::storage::{data_dir, read_json_with_backup, write_atomic};
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -20,36 +19,20 @@ pub struct SettingsStore {
 
 impl SettingsStore {
     pub fn new() -> Self {
-        let file_path = Self::path();
-        let data = Self::load(&file_path);
+        let file_path = data_dir().join("settings.json");
+        let data = read_json_with_backup(&file_path);
         Self {
             data: Mutex::new(data),
             file_path,
         }
     }
 
-    fn path() -> PathBuf {
-        if let Some(proj) = ProjectDirs::from("com", "pinnotes", "Pin Notes") {
-            let dir = proj.data_dir();
-            fs::create_dir_all(dir).ok();
-            dir.join("settings.json")
-        } else {
-            PathBuf::from("settings.json")
-        }
-    }
-
-    fn load(path: &PathBuf) -> Settings {
-        fs::read_to_string(path)
-            .ok()
-            .and_then(|c| serde_json::from_str(&c).ok())
-            .unwrap_or_default()
-    }
-
     fn save(&self) -> Result<(), String> {
-        let data = self.data.lock().map_err(|e| e.to_string())?;
-        let json = serde_json::to_string_pretty(&*data).map_err(|e| e.to_string())?;
-        fs::write(&self.file_path, json).map_err(|e| e.to_string())?;
-        Ok(())
+        let json = {
+            let data = self.data.lock().map_err(|e| e.to_string())?;
+            serde_json::to_string_pretty(&*data).map_err(|e| e.to_string())?
+        };
+        write_atomic(&self.file_path, json.as_bytes()).map_err(|e| e.to_string())
     }
 
     pub fn vault_path(&self) -> Option<String> {

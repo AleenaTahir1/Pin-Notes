@@ -1,7 +1,7 @@
 use tauri::AppHandle;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
-use crate::window::{create_notes_list_window, spawn_new_note_at_cursor};
+use crate::window::{create_notes_list_window, spawn_new_note};
 
 pub fn register_global_hotkey(app: &AppHandle) -> Result<(), String> {
     // Ctrl+Alt+P — create a new note (P for Pin Notes)
@@ -11,7 +11,7 @@ pub fn register_global_hotkey(app: &AppHandle) -> Result<(), String> {
     app.global_shortcut()
         .on_shortcut(new_note_shortcut, move |_app, _shortcut, event| {
             if event.state == ShortcutState::Pressed {
-                if let Err(e) = spawn_new_note_at_cursor(&app_handle_n) {
+                if let Err(e) = spawn_new_note(&app_handle_n, None) {
                     eprintln!("Failed to spawn new note: {}", e);
                 }
             }

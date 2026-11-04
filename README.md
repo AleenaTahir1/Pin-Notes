@@ -46,9 +46,10 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 
 ## Features
 
-- **Always on top** — Floating notes that stay visible over all other windows
+- **Always on top, your choice** — Notes float over other windows; the pin button on a note lets it sit behind your work instead
 - **Obsidian sync** — Two-way sync with an Obsidian vault: edit notes in either app
-- **Markdown formatting** — Headings (H1–H6), **bold**, *italic*, ~~strikethrough~~, `inline code`, blockquotes, bullet lists, and tickable task checkboxes (`- [ ]` or `-[ ]`) — all round-trip with Obsidian
+- **Markdown formatting** — Headings (H1–H6), **bold**, *italic*, ~~strikethrough~~, `inline code`, blockquotes, bullet lists, and tickable task checkboxes (`- [ ]` or `-[ ]`), shown live as you type (like Obsidian) and saved as plain markdown that round-trips with Obsidian
+- **Smooth editor** — Built on CodeMirror 6: the page follows your cursor, Enter continues lists, Enter on an empty item ends the list, full undo/redo, and long notes stay fast
 - **Preview mode** — Markdown/template notes get an eye toggle to flip between editing and a clean, read-only rendered view
 - **Templates** — Start notes from 9 built-in templates, or your own templates from your Obsidian vault
 - **Dark mode** — Pastel-tinted dark theme with one-click toggle, synced across all notes
@@ -57,9 +58,10 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 - **Multiple note colors** — 8 pastel themes to color-code your notes
 - **Font & text size** — Switch fonts (Handwriting, Clean, Mono) and step text size up/down — each note remembers both
 - **Freeform sizing** — Drag any corner or edge to resize, all the way down to a thin one-line note; each note reopens at the size you left it
-- **System tray** — Quick actions from the tray icon (new note, notes list, show all, quit)
+- **System tray** — Quick actions from the tray icon (new note, notes list, show all, quit). Notes stay out of the taskbar; the – button hides a note and All notes or the tray brings it back
 - **Global shortcuts** — Create notes and open the list from anywhere on your desktop
-- **Auto-save** — Notes save automatically with debounce, no manual saving needed
+- **Safe auto-save** — Notes save on their own within half a second, written safely with a backup copy so a crash or power cut can't wipe them
+- **Remembers where you put them** — Notes reopen where you left them, and new notes open next to your mouse
 - **Local storage** — JSON file persistence — no cloud, no account required
 - **Frameless windows** — Draggable, borderless windows that feel like real sticky notes
 - **Neumorphic design** — Soft, modern UI with subtle depth and shadows
@@ -92,6 +94,8 @@ Download the latest release from the [Releases](https://github.com/AleenaTahir1/
 |----------|--------|
 | **Ctrl+Alt+P** | Create a new note |
 | **Ctrl+Alt+L** | Open notes list |
+| **Ctrl+W** | Close the current note |
+| **Ctrl+Z** / **Ctrl+Shift+Z** | Undo / redo |
 
 ### System Tray
 
@@ -101,7 +105,7 @@ Right-click the tray icon for quick actions:
 |--------|-------------|
 | **New Note** | Create a new sticky note |
 | **Notes List** | Open the notes list panel |
-| **Show All** | Bring all notes to the front |
+| **Show All** | Reopen every note, including closed and hidden ones |
 | **Quit** | Close PinNotes |
 
 ### Dark Mode

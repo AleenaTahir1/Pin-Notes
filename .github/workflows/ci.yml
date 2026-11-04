@@ -36,6 +36,13 @@ jobs:
       - name: Type check frontend
         run: npm run build
 
+      - name: Frontend tests
+        run: npm test
+
       - name: Check Rust
         working-directory: src-tauri
         run: cargo check
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test

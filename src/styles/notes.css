@@ -1,6 +1,5 @@
 /* ===== PinNotes — Clean Sticky Notes ===== */
 
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&display=swap');
 
 :root {
   --note-buttercream: #fff9c4;
@@ -212,9 +211,14 @@ html, body, #root {
     inset -1px -1px 3px rgba(255, 255, 255, 0.5);
 }
 
-.titlebar-btn.minimize-btn:hover {
+.titlebar-btn.minimize-btn:hover,
+.titlebar-btn.ontop-btn:hover {
   background: rgba(0, 0, 0, 0.06);
 }
+
+/* Keep-on-top pin: dimmed when off, solid when the note floats above other windows. */
+.titlebar-btn.ontop-btn { opacity: 0.45; }
+.titlebar-btn.ontop-btn.active { opacity: 1; }
 
 .titlebar-btn.new-note-btn:hover {
   background: rgba(76, 175, 80, 0.12);
@@ -432,42 +436,39 @@ html, body, #root {
   position: relative;
 }
 
-/* ===== Contenteditable Editor ===== */
-.note-editable {
+/* ===== Editor (CodeMirror 6) ===== */
+.note-editor .cm-editor {
   flex: 1;
-  width: 100%;
   height: 100%;
-  padding: 12px 14px;
-  border: none;
+  min-height: 0;
   background: transparent;
-  font-family: var(--font-hand);
-  font-size: 18px;
-  line-height: 1.8;
   color: var(--text-dark);
-  outline: none;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  font-family: var(--editor-font, var(--font-hand));
+  font-size: var(--editor-size, 18px);
+}
+/* No focus ring: WebKit (macOS) otherwise draws a blue line under the text. */
+.note-editor .cm-editor.cm-focused,
+.note-editor .cm-content:focus,
+.note-editor .cm-content:focus-visible { outline: none; }
+.note-editor .cm-scroller {
+  font-family: inherit;
+  line-height: 1.8;
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.note-editor .cm-content {
+  padding: 12px 14px 16px;
   cursor: text;
 }
-
-.note-editable:empty::before {
-  content: attr(data-placeholder);
+.note-editor .cm-line { padding: 0; }
+.note-editor .cm-cursor { border-left: 2px solid currentColor; }
+.note-editor .cm-selectionBackground,
+.note-editor .cm-editor.cm-focused .cm-selectionBackground { background: rgba(80, 130, 220, 0.22); }
+.note-editor .cm-placeholder {
   color: var(--text-light);
   font-style: italic;
-  pointer-events: none;
 }
-
-/* Read-only rendered markdown view (eye/preview mode). Same paper/typography as the
-   editor, but not editable and with a default cursor. */
-.note-preview {
-  cursor: default;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-.note-preview .md-task::before {
-  cursor: default;
-}
+.note-editor.is-preview .cm-content { cursor: default; }
 
 /* Preview/edit toggle — a small labeled pill so the current mode is unmistakable. */
 .titlebar-btn.preview-btn {
@@ -495,89 +496,69 @@ html, body, #root {
   color: #15241a;
 }
 
-/* Editor highlight colors */
-.note-editable .hl-yellow { background: rgba(255, 245, 157, 0.5); padding: 0 1px; border-radius: 2px; }
-.note-editable .hl-pink { background: rgba(248, 187, 208, 0.45); padding: 0 1px; border-radius: 2px; }
-.note-editable .hl-green { background: rgba(165, 214, 167, 0.45); padding: 0 1px; border-radius: 2px; }
-.note-editable .hl-blue { background: rgba(144, 202, 249, 0.45); padding: 0 1px; border-radius: 2px; }
-.note-editable .hl-purple { background: rgba(206, 147, 216, 0.45); padding: 0 1px; border-radius: 2px; }
+/* Markdown live preview — the stored text stays markdown, these only style it. */
+.note-editor .cm-hl { padding: 0 1px; border-radius: 2px; }
+.note-editor .cm-hl-yellow { background: rgba(255, 245, 157, 0.5); }
+.note-editor .cm-hl-pink { background: rgba(248, 187, 208, 0.45); }
+.note-editor .cm-hl-green { background: rgba(165, 214, 167, 0.45); }
+.note-editor .cm-hl-blue { background: rgba(144, 202, 249, 0.45); }
+.note-editor .cm-hl-purple { background: rgba(206, 147, 216, 0.45); }
 
-/* Basic markdown formatting (round-trips to Obsidian) */
-.note-editable strong { font-weight: 700; }
-.note-editable em { font-style: italic; }
-.note-editable s { opacity: 0.65; }
-.note-editable code {
+.note-editor .cm-strong { font-weight: 700; }
+.note-editor .cm-em { font-style: italic; }
+.note-editor .cm-strike { text-decoration: line-through; opacity: 0.65; }
+.note-editor .cm-inline-code,
+.note-editor .cm-codeblock {
   font-family: 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
   font-size: 0.88em;
+}
+.note-editor .cm-inline-code {
   background: rgba(0, 0, 0, 0.07);
   padding: 0 4px;
   border-radius: 4px;
 }
-.note-editable .md-h1,
-.note-editable .md-h2,
-.note-editable .md-h3,
-.note-editable .md-h4,
-.note-editable .md-h5,
-.note-editable .md-h6 {
+.note-editor .cm-codeblock { background: rgba(0, 0, 0, 0.05); }
+/* Markers on the line being edited are shown faintly so formatting stays editable. */
+.note-editor .cm-md-mark { opacity: 0.35; }
+
+.note-editor .cm-h1, .note-editor .cm-h2, .note-editor .cm-h3,
+.note-editor .cm-h4, .note-editor .cm-h5, .note-editor .cm-h6 {
   font-weight: 700;
   line-height: 1.35;
-  margin: 2px 0;
+  padding: 2px 0;
 }
-.note-editable .md-h1 { font-size: 1.55em; }
-.note-editable .md-h2 { font-size: 1.32em; }
-.note-editable .md-h3 { font-size: 1.16em; }
-.note-editable .md-h4 { font-size: 1.05em; }
-.note-editable .md-h5 { font-size: 0.95em; text-transform: uppercase; letter-spacing: 0.04em; }
-.note-editable .md-h6 { font-size: 0.9em; opacity: 0.8; }
+.note-editor .cm-h1 { font-size: 1.55em; }
+.note-editor .cm-h2 { font-size: 1.32em; }
+.note-editor .cm-h3 { font-size: 1.16em; }
+.note-editor .cm-h4 { font-size: 1.05em; }
+.note-editor .cm-h5 { font-size: 0.95em; text-transform: uppercase; letter-spacing: 0.04em; }
+.note-editor .cm-h6 { font-size: 0.9em; opacity: 0.8; }
 
-/* Blockquote */
-.note-editable .md-quote {
+.note-editor .cm-quote {
   border-left: 3px solid rgba(0, 0, 0, 0.25);
   padding-left: 8px;
-  margin: 1px 0;
   font-style: italic;
   opacity: 0.85;
 }
 
-/* Bullet list */
-.note-editable .md-li {
-  padding-left: 1.25em;
-  position: relative;
-}
-.note-editable .md-li::before {
-  content: '•';
-  position: absolute;
-  left: 0.35em;
+.note-editor .cm-bullet {
+  display: inline-block;
+  width: 1.1em;
   opacity: 0.7;
+  text-align: center;
 }
-
-/* Task list — the checkbox is a ::before marker on the line (state in data-checked),
-   so the line itself is plain editable text. */
-.note-editable .md-task {
-  padding-left: 1.5em;
-  position: relative;
-}
-.note-editable .md-task::before {
-  content: '☐';
-  position: absolute;
-  left: 0.05em;
+.note-editor .cm-task-box {
+  display: inline-block;
+  width: 1.4em;
   cursor: pointer;
   user-select: none;
 }
-.note-editable .md-task[data-checked="true"]::before { content: '☑'; }
-.note-editable .md-task[data-checked="true"] {
-  text-decoration: line-through;
-  opacity: 0.55;
-}
+/* Inline-block keeps the line-through off the checkbox itself. */
+.note-editor .cm-task-done { text-decoration: line-through; opacity: 0.55; }
 
-/* Markdown on dark surfaces — lift the code/quote accents off near-black */
-.note-window.note-dark-bg .note-editable code {
-  background: rgba(255, 255, 255, 0.13);
-}
-.note-window.note-dark-bg .note-editable .md-quote {
-  border-left-color: rgba(255, 255, 255, 0.3);
-}
-
+.note-window.note-dark-bg .note-editor .cm-inline-code { background: rgba(255, 255, 255, 0.13); }
+.note-window.note-dark-bg .note-editor .cm-codeblock { background: rgba(255, 255, 255, 0.06); }
+.note-window.note-dark-bg .note-editor .cm-quote { border-left-color: rgba(255, 255, 255, 0.3); }
 
 /* ===== Resize Handle ===== */
 .resize-handle {
@@ -1218,10 +1199,10 @@ html, body, #root {
 }
 
 /* ===== Dark-background notes (pure black, or dark-mode notes) — keep text legible ===== */
-.note-window.note-dark-bg .note-editable {
+.note-window.note-dark-bg .note-editor .cm-editor {
   color: #f1f1f5;
 }
-.note-window.note-dark-bg .note-editable:empty::before {
+.note-window.note-dark-bg .note-editor .cm-placeholder {
   color: rgba(255, 255, 255, 0.45);
 }
 .note-window.note-dark-bg .note-titlebar {

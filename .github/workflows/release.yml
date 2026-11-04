@@ -21,6 +21,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Never bump the version or publish an update when the tests fail.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Frontend tests
+        run: |
+          npm ci
+          npm test
+
       - name: Check for changes and bump version
         id: bump
         run: |

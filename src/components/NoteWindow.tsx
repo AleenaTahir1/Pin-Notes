@@ -16,13 +16,13 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   const {
     note,
     isLoading,
-    rotation,
     loadNote,
     setContent,
     setColor,
     setFont,
     setFontSize,
     setSize,
+    setOnTop,
     closeNote,
     save,
     pullExternal,
@@ -57,9 +57,12 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   useEffect(() => {
     if (isLoading) return;
     const win = getCurrentWindow();
+    // Only notes the user just created/opened take focus; restored notes don't grab
+    // the keyboard from whatever the user is typing in.
+    const takeFocus = new URLSearchParams(window.location.search).get('focus') === '1';
     const raf = requestAnimationFrame(() => {
       win.show().catch(() => {});
-      win.setFocus().catch(() => {});
+      if (takeFocus) win.setFocus().catch(() => {});
     });
     return () => cancelAnimationFrame(raf);
   }, [isLoading]);
@@ -109,7 +112,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   useEffect(() => {
     if (!syncing) return;
     const interval = setInterval(() => {
-      const editingHere = document.activeElement?.classList.contains('note-editable');
+      const editingHere = !!document.activeElement?.closest('.cm-editor');
       if (!editingHere) pullExternal();
     }, 3000);
     return () => clearInterval(interval);
@@ -143,14 +146,21 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
     await closeNote();
   }, [closeNote]);
 
+  // Notes have no taskbar button, so "minimize" hides the note; it comes back from the
+  // notes list (click it) or the tray (Show All Notes).
   const handleMinimize = useCallback(async () => {
     try {
-      const win = getCurrentWindow();
-      await win.minimize();
+      await save();
+      await getCurrentWindow().hide();
     } catch (err) {
-      console.warn('Minimize failed:', err);
+      console.warn('Hide failed:', err);
     }
-  }, []);
+  }, [save]);
+
+  const onTop = note?.always_on_top !== false;
+  const handleToggleOnTop = useCallback(() => {
+    setOnTop(!onTop);
+  }, [onTop, setOnTop]);
 
   const handleOpenNotesList = useCallback(async () => {
     try {
@@ -188,10 +198,6 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.ctrlKey && e.key === 'w') {
-      e.preventDefault();
-      handleClose();
-    }
-    if (e.key === 'Escape') {
       e.preventDefault();
       handleClose();
     }
@@ -233,18 +239,12 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
         className={`note-window ${isDragging ? 'dragging' : ''} ${isDarkBg ? 'note-dark-bg' : ''}`}
         style={{
           backgroundColor: displayColor,
-          '--note-rotation': `${rotation}deg`,
           '--note-font': currentFont,
-          perspective: 1200,
-          transformOrigin: 'center 60%',
         } as React.CSSProperties}
-        initial={{ scale: 0.985, opacity: 0, rotateX: 2 }}
-        animate={{
-          scale: isDragging ? 1.01 : 1,
-          opacity: 1,
-          rotateX: 2,
-          y: isDragging ? -2 : 0,
-        }}
+        // Flat (2D) on purpose: a 3D tilt blurs text and causes caret repaint glitches
+        // in WebView2's transparent windows.
+        initial={{ scale: 0.985, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.16, ease: 'easeOut' }}
         onKeyDown={handleKeyDown}
         tabIndex={-1}
@@ -365,15 +365,29 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             )}
           </div>
 
-          {/* RIGHT: minimize, close */}
+          {/* RIGHT: keep on top, minimize, close */}
           <div className="titlebar-right">
+            <button
+              className={`titlebar-btn ontop-btn ${onTop ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleOnTop();
+              }}
+              title={onTop ? 'Keeping on top of other windows (click to stop)' : 'Keep on top of other windows'}
+              aria-pressed={onTop}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={onTop ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 17v5" />
+                <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+              </svg>
+            </button>
             <button
               className="titlebar-btn minimize-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 handleMinimize();
               }}
-              title="Minimize"
+              title="Hide (reopen from All notes or the tray)"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -383,7 +397,7 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             <button
               className="titlebar-btn close-btn"
               onClick={handleClose}
-              title="Close (Esc)"
+              title="Close (Ctrl+W)"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18" />
