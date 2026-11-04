@@ -33,6 +33,9 @@ const notes = new Map<string, Note>([
 (window as unknown as { __saveCount: number }).__saveCount = 0;
 
 export function installMockTauri() {
+  if (location.search.includes('whatsnew')) {
+    localStorage.setItem('pinnotes-seen-version', '1.0.10');
+  }
   mockWindows('main');
   mockIPC((cmd, args) => {
     const a = (args ?? {}) as Record<string, unknown>;
@@ -51,6 +54,20 @@ export function installMockTauri() {
       case 'close_note':
       case 'open_note':
         return null;
+      // ?update shows the update popup, ?whatsnew the after-update card.
+      case 'plugin:app|version':
+        return location.search.includes('update') ? '1.0.10' : '1.1.0';
+      case 'plugin:updater|check':
+        return location.search.includes('update')
+          ? {
+              rid: 1,
+              currentVersion: '1.0.10',
+              version: '1.1.0',
+              date: '',
+              body: "## Pin Notes v1.1.0\n\n### What's new\n\n- Smoother writing: the page follows your cursor\n- Undo and redo work everywhere\n- Notes remember where you put them\n- Safer saving with a backup copy\n\n### Installation\n- Windows",
+              rawJson: {},
+            }
+          : null;
       case 'get_sync_status':
         return null;
       case 'get_vault_templates':

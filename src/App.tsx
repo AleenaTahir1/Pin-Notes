@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NoteWindow } from './components/NoteWindow';
 import { NotesList } from './components/NotesList';
+import { TooltipLayer } from './components/TooltipLayer';
 import { useTheme } from './store/theme';
 import './styles/notes.css';
 
@@ -25,7 +26,12 @@ function App() {
   }, []);
 
   if (view === 'list') {
-    return <NotesList />;
+    return (
+      <>
+        <NotesList />
+        <TooltipLayer />
+      </>
+    );
   }
 
   if (!noteId) {
@@ -36,7 +42,12 @@ function App() {
     );
   }
 
-  return <NoteWindow noteId={noteId} />;
+  return (
+    <>
+      <NoteWindow noteId={noteId} />
+      <TooltipLayer />
+    </>
+  );
 }
 
 export default App;

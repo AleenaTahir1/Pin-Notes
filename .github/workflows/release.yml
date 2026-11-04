@@ -120,6 +120,18 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # RELEASE_NOTES.md (a "### What's new" list) goes into the release and into the
+      # updater feed, where the in-app update popup shows it.
+      - name: Read release notes
+        id: notes
+        shell: bash
+        run: |
+          {
+            echo 'body<<NOTES_EOF'
+            if [ -f RELEASE_NOTES.md ]; then cat RELEASE_NOTES.md; echo; fi
+            echo 'NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and Release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -134,6 +146,8 @@ jobs:
             ## Pin Notes v__VERSION__
 
             Floating sticky notes — fast, local, no account required.
+
+            ${{ steps.notes.outputs.body }}
 
             ### Installation
             - **Windows** — `.exe` (NSIS installer, auto-updates in place)

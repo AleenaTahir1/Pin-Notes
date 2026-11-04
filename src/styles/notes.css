@@ -483,19 +483,7 @@ html, body, #root {
 }
 .note-editor.is-preview .cm-content { cursor: default; }
 
-/* Preview/edit toggle — a small labeled pill so the current mode is unmistakable. */
-.titlebar-btn.preview-btn {
-  width: auto;
-  padding: 0 8px;
-  gap: 4px;
-  border-radius: 11px;
-}
-.preview-btn-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  pointer-events: none;
-}
+/* Preview/edit toggle: an icon like the others; filled while previewing. */
 /* While previewing, the toggle is clearly "on" (filled) and reads "Edit". */
 .titlebar-btn.preview-btn.active {
   background: rgba(80, 130, 95, 0.9);
@@ -1124,92 +1112,6 @@ html, body, #root {
   align-items: center;
 }
 
-/* ===== Update Banner ===== */
-/* ===== Update popup (modal) ===== */
-.update-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.update-modal {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  max-width: 270px;
-  text-align: center;
-  font-family: var(--font-hand);
-}
-.update-modal-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  margin: 0 auto 12px;
-  border-radius: 50%;
-  background: rgba(74, 124, 89, 0.12);
-}
-.update-modal-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin-bottom: 6px;
-}
-.update-modal-message {
-  font-size: 15px;
-  color: var(--text-mid);
-  margin-bottom: 16px;
-  line-height: 1.4;
-}
-.update-modal-buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-.update-modal-btn {
-  padding: 8px 18px;
-  border: none;
-  border-radius: 20px;
-  font-family: var(--font-hand);
-  font-size: 15px;
-  cursor: pointer;
-  transition: box-shadow 0.1s, background 0.1s, filter 0.1s;
-  box-shadow:
-    3px 3px 6px rgba(0, 0, 0, 0.08),
-    -3px -3px 6px rgba(255, 255, 255, 0.9);
-}
-.update-modal-btn:hover { filter: brightness(1.04); }
-.update-modal-btn:active { filter: brightness(0.92); transition-duration: 0s; }
-.update-modal-btn.skip {
-  background: #f5f5f5;
-  color: var(--text-mid);
-}
-.update-modal-btn.confirm {
-  background: #cdeccf;
-  color: #2e7d32;
-}
-
-.update-progress-bar {
-  width: 100%;
-  height: 8px;
-  margin: 4px 0 12px;
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.update-progress-fill {
-  height: 100%;
-  background: #4caf50;
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
 /* ===== Dark-background notes (pure black, or dark-mode notes) — keep text legible ===== */
 .note-window.note-dark-bg .note-editor .cm-editor {
   color: #f1f1f5;
@@ -1568,29 +1470,6 @@ html, body, #root {
 }
 
 /* --- Update banner --- */
-[data-theme="dark"] .update-modal {
-  background: #2a2a32;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-}
-[data-theme="dark"] .update-modal-icon {
-  background: rgba(129, 199, 132, 0.16);
-}
-[data-theme="dark"] .update-modal-btn {
-  box-shadow:
-    3px 3px 6px rgba(0, 0, 0, 0.4),
-    -3px -3px 6px rgba(255, 255, 255, 0.04);
-}
-[data-theme="dark"] .update-modal-btn.skip {
-  background: #33333d;
-  color: var(--text-mid);
-}
-[data-theme="dark"] .update-modal-btn.confirm {
-  background: rgba(76, 175, 80, 0.22);
-  color: #a5d6a7;
-}
-[data-theme="dark"] .update-progress-bar {
-  background: rgba(255, 255, 255, 0.12);
-}
 
 /* --- Scrollbars --- */
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
@@ -1688,3 +1567,265 @@ button:active:not(:disabled) > span {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* ===== Tooltips (TooltipLayer) ===== */
+.app-tooltip {
+  position: fixed;
+  z-index: 3000;
+  max-width: min(240px, calc(100vw - 12px));
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(32, 32, 36, 0.92);
+  color: #fff;
+  font: 500 12px/1.35 'Segoe UI', system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.1px;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  animation: app-tooltip-in 90ms ease-out;
+}
+[data-theme="dark"] .app-tooltip {
+  background: rgba(244, 244, 247, 0.95);
+  color: #1c1c20;
+}
+@keyframes app-tooltip-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* A calmer note: titlebar icons rest softly and come forward when the pointer is on the note. */
+.note-titlebar .titlebar-btn {
+  transition: box-shadow 0.1s, color 0.1s, background 0.1s, opacity 0.15s;
+}
+.note-window:not(:hover) .note-titlebar .titlebar-btn {
+  opacity: 0.55;
+}
+
+/* ===== Popups: update available, "What's new" ===== */
+.pn-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(30, 30, 30, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.pn-sheet {
+  width: 100%;
+  max-width: 268px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 18px 18px 12px;
+  border-radius: 18px;
+  background: #fffdf6;
+  text-align: center;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.pn-sheet-hero {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.pn-logo {
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.12));
+}
+.pn-logo.bob { animation: pn-bob 1.6s ease-in-out infinite; }
+@keyframes pn-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-4px) rotate(2deg); }
+}
+.pn-badge {
+  position: absolute;
+  top: 6px;
+  left: calc(50% + 20px);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e53935;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(229, 57, 53, 0.35);
+}
+.pn-sheet-title {
+  margin: 2px 0 8px;
+  font-family: var(--font-hand);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #2d2d2d;
+}
+.pn-versions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: #888;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pn-ver {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: #666;
+}
+.pn-ver.new {
+  background: #e3f4e6;
+  color: #2e7d32;
+}
+.pn-notes {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 241, 160, 0.45);
+  text-align: left;
+}
+.pn-notes-label {
+  margin-bottom: 6px;
+  color: #8a7a2a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.pn-notes ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pn-notes li {
+  position: relative;
+  padding-left: 18px;
+  color: #3a3a3a;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.pn-notes li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 4px;
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #43a047;
+  border-bottom: 2px solid #43a047;
+  transform: rotate(-45deg);
+}
+.pn-sheet-text {
+  margin: 0 0 14px;
+  color: #555;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.pn-sheet-text.small {
+  margin: 10px 0 4px;
+  color: #777;
+  font-size: 12px;
+}
+.pn-btn.primary {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #5cb46a, #43a047);
+  color: #fff;
+  font: 600 14px/1.2 'Segoe UI', system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(67, 160, 71, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: filter 0.1s, box-shadow 0.1s;
+}
+.pn-btn.primary:hover { filter: brightness(1.05); }
+.pn-btn.primary:active {
+  filter: brightness(0.94);
+  box-shadow: 0 2px 6px rgba(67, 160, 71, 0.3);
+  transition-duration: 0s;
+}
+.pn-btn:focus-visible,
+.pn-link:focus-visible {
+  outline: 2px solid #43a047;
+  outline-offset: 2px;
+}
+.pn-sheet-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: #bbb;
+  font-size: 12px;
+}
+.pn-link {
+  padding: 4px 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #777;
+  font: 500 12.5px 'Segoe UI', system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+}
+.pn-link:hover {
+  color: #333;
+  background: rgba(0, 0, 0, 0.05);
+}
+.pn-progress {
+  height: 8px;
+  margin: 8px 0 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.pn-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #66bb6a, #43a047);
+  transition: width 0.25s ease;
+}
+.pn-progress-fill.indeterminate {
+  width: 35%;
+  animation: pn-slide 1.1s ease-in-out infinite;
+}
+@keyframes pn-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(290%); }
+}
+.pn-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  min-height: 15px;
+  color: #777;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-theme="dark"] .pn-overlay { background: rgba(0, 0, 0, 0.45); }
+[data-theme="dark"] .pn-sheet {
+  background: #26262c;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .pn-sheet-title { color: #f1f1f5; }
+[data-theme="dark"] .pn-sheet-text { color: #c9c9d1; }
+[data-theme="dark"] .pn-sheet-text.small,
+[data-theme="dark"] .pn-progress-meta { color: #a0a0aa; }
+[data-theme="dark"] .pn-notes { background: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] .pn-notes-label { color: #d8c86a; }
+[data-theme="dark"] .pn-notes li { color: #e3e3ea; }
+[data-theme="dark"] .pn-ver { background: rgba(255, 255, 255, 0.1); color: #c9c9d1; }
+[data-theme="dark"] .pn-ver.new { background: rgba(102, 187, 106, 0.18); color: #9be3a1; }
+[data-theme="dark"] .pn-link { color: #aaa; }
+[data-theme="dark"] .pn-link:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .pn-progress { background: rgba(255, 255, 255, 0.1); }

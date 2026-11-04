@@ -6,6 +6,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Note, NoteTemplate, NOTE_TEMPLATES, applyTemplatePlaceholders } from '../types';
 import { UpdateChecker } from './UpdateChecker';
+import { WhatsNew } from './WhatsNew';
 import { useTheme, toggleTheme } from '../store/theme';
 import { useI18n } from '../store/i18n';
 
@@ -488,6 +489,7 @@ export function NotesList() {
           </motion.div>
         )}
       </AnimatePresence>
+      <WhatsNew />
       <UpdateChecker />
     </div>
   );

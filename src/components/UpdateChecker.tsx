@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { check } from '@tauri-apps/plugin-updater';
+import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
 import { useI18n } from '../store/i18n';
@@ -11,7 +11,7 @@ const SKIP_KEY = 'pinnotes-skipped-update';
 // Compare two semver strings. Returns >0 if a is newer than b, <0 if older, 0 if equal.
 // Pre-release / build metadata is ignored — only the numeric core (x.y.z) is compared,
 // which matches how the Tauri updater decides whether an update applies.
-function compareVersions(a: string, b: string): number {
+export function compareVersions(a: string, b: string): number {
   const norm = (v: string) =>
     v.replace(/^v/, '').split(/[-+]/)[0].split('.').map((n) => parseInt(n, 10) || 0);
   const pa = norm(a);
@@ -24,135 +24,198 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
+/**
+ * The "What's new" bullets from the release notes (the section under a "What's new"
+ * heading in RELEASE_NOTES.md, see the release workflow). Markdown is stripped; at most
+ * five items so the popup stays short.
+ */
+export function parseWhatsNew(body?: string | null): string[] {
+  if (!body) return [];
+  const lines = body.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^#{1,6}\s*what'?s new/i.test(l.trim()));
+  if (start < 0) return [];
+  const items: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    const t = line.trim();
+    if (/^#{1,6}\s/.test(t)) break;
+    const m = /^[-*]\s+(.*)$/.exec(t);
+    if (m) items.push(m[1].replace(/\*\*|__|`/g, '').trim());
+  }
+  return items.filter(Boolean).slice(0, 5);
+}
+
+const mb = (bytes: number) => (bytes / 1048576).toFixed(1);
+
+type Status = 'idle' | 'available' | 'downloading' | 'done' | 'failed';
+
 export function UpdateChecker() {
   const { t } = useI18n();
-  const [status, setStatus] = useState<'idle' | 'available' | 'downloading' | 'done'>('idle');
-  const [version, setVersion] = useState('');
-  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<Status>('idle');
+  const [update, setUpdate] = useState<Update | null>(null);
+  const [current, setCurrent] = useState('');
+  const [bytes, setBytes] = useState({ done: 0, total: 0 });
 
   useEffect(() => {
-    // Check for updates 3 seconds after mount
-    const timer = setTimeout(async () => {
+    let cancelled = false;
+    // Check a few seconds after the list opens, and never on top of another popup
+    // (e.g. the "What's new" card shown right after an update).
+    const run = async () => {
+      if (cancelled) return;
+      if (document.querySelector('.pn-overlay')) {
+        setTimeout(run, 10000);
+        return;
+      }
       try {
-        const [update, current] = await Promise.all([check(), getVersion()]);
-
+        const [found, cur] = await Promise.all([check(), getVersion()]);
         // Only surface the popup when the endpoint advertises a version STRICTLY newer
         // than the running one (prevents "update available" after it's already installed).
-        if (update && compareVersions(update.version, current) > 0) {
-          // Don't nag about a version the user explicitly skipped.
-          if (localStorage.getItem(SKIP_KEY) === update.version) return;
-          setVersion(update.version);
-          setStatus('available');
-        }
+        if (cancelled || !found || compareVersions(found.version, cur) <= 0) return;
+        // Don't nag about a version the user explicitly skipped.
+        if (localStorage.getItem(SKIP_KEY) === found.version) return;
+        setUpdate(found);
+        setCurrent(cur);
+        setStatus('available');
       } catch (err) {
         console.warn('[Pin Notes] Update check failed:', err);
       }
-    }, 3000);
-
-    return () => clearTimeout(timer);
+    };
+    const timer = setTimeout(run, 3000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, []);
 
-  const handleUpdate = async () => {
+  const handleUpdate = useCallback(async () => {
+    if (!update) return;
+    setBytes({ done: 0, total: 0 });
+    setStatus('downloading');
     try {
-      setStatus('downloading');
-      const [update, current] = await Promise.all([check(), getVersion()]);
-      if (!update || compareVersions(update.version, current) <= 0) {
-        // Nothing newer to install after all — close the popup.
-        setStatus('idle');
-        return;
-      }
-
-      let totalBytes = 0;
-      let downloadedBytes = 0;
-
+      let total = 0;
+      let done = 0;
       await update.downloadAndInstall((event) => {
-        if (event.event === 'Started' && event.data.contentLength) {
-          totalBytes = event.data.contentLength;
+        if (event.event === 'Started') {
+          total = event.data.contentLength ?? 0;
+          setBytes({ done: 0, total });
         } else if (event.event === 'Progress') {
-          downloadedBytes += event.data.chunkLength;
-          if (totalBytes > 0) {
-            setProgress(Math.round((downloadedBytes / totalBytes) * 100));
-          }
+          done += event.data.chunkLength;
+          setBytes({ done, total });
         } else if (event.event === 'Finished') {
           setStatus('done');
         }
       });
-
-      // The NSIS installer has now replaced the old version in place.
-      // Relaunch into the freshly installed build.
+      // The installer has replaced the old version in place; reopen into the new one.
       await relaunch();
     } catch (err) {
       console.error('[Pin Notes] Update failed:', err);
-      setStatus('idle');
+      setStatus('failed');
     }
-  };
+  }, [update]);
 
-  // Skip this version: remember it so it won't pop up again, and close the popup.
+  // Not now: close, and ask again next time the app starts.
+  const handleLater = () => setStatus('idle');
+
+  // Skip this version: remember it so it won't pop up again.
   const handleSkip = () => {
-    if (version) localStorage.setItem(SKIP_KEY, version);
+    if (update) localStorage.setItem(SKIP_KEY, update.version);
     setStatus('idle');
   };
 
-  const isOpen = status !== 'idle';
+  const version = update?.version.replace(/^v/, '') ?? '';
+  const notes = parseWhatsNew(update?.body);
+  const percent = bytes.total > 0 ? Math.min(100, Math.round((bytes.done / bytes.total) * 100)) : 0;
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {status !== 'idle' && (
         <motion.div
-          className="update-modal-overlay"
+          className="pn-overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          // Clicking the backdrop skips (only while the choice is still the user's).
-          onClick={status === 'available' ? handleSkip : undefined}
+          transition={{ duration: 0.18 }}
+          // Clicking the backdrop means "later" (only while the choice is still the user's).
+          onClick={status === 'available' || status === 'failed' ? handleLater : undefined}
         >
           <motion.div
-            className="update-modal"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.15 }}
+            className="pn-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pn-update-title"
+            initial={{ opacity: 0, y: 14, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="update-modal-icon">
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-3.5-7.1" />
-                <polyline points="21 3 21 8 16 8" />
-              </svg>
+            <div className="pn-sheet-hero">
+              <img src="/logo.png" alt="" className={status === 'downloading' ? 'pn-logo bob' : 'pn-logo'} />
             </div>
 
             {status === 'available' && (
               <>
-                <h3 className="update-modal-title">{t('update.available')}</h3>
-                <p className="update-modal-message">
-                  {t('update.ready', { version: version.replace(/^v/, '') })}
-                </p>
-                <div className="update-modal-buttons">
-                  <button className="update-modal-btn skip" onClick={handleSkip}>
-                    {t('update.skip')}
-                  </button>
-                  <button className="update-modal-btn confirm" onClick={handleUpdate}>
-                    {t('update.now')}
-                  </button>
+                <h3 id="pn-update-title" className="pn-sheet-title">{t('update.title')}</h3>
+                <div className="pn-versions" aria-label={`${current} → ${version}`}>
+                  <span className="pn-ver old">{current}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                  <span className="pn-ver new">{version}</span>
+                </div>
+                {notes.length > 0 ? (
+                  <div className="pn-notes">
+                    <div className="pn-notes-label">{t('update.whatsNew')}</div>
+                    <ul>
+                      {notes.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="pn-sheet-text">{t('update.ready', { version })}</p>
+                )}
+                <button className="pn-btn primary" onClick={handleUpdate} autoFocus>
+                  {t('update.now')}
+                </button>
+                <div className="pn-sheet-links">
+                  <button className="pn-link" onClick={handleLater}>{t('update.later')}</button>
+                  <span aria-hidden="true">·</span>
+                  <button className="pn-link" onClick={handleSkip}>{t('update.skipVersion')}</button>
                 </div>
               </>
             )}
 
             {status === 'downloading' && (
               <>
-                <h3 className="update-modal-title">{t('update.downloading')}</h3>
-                <div className="update-progress-bar">
-                  <div className="update-progress-fill" style={{ width: `${progress}%` }} />
+                <h3 id="pn-update-title" className="pn-sheet-title">{t('update.downloading')}</h3>
+                <div className="pn-progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+                  <div className={`pn-progress-fill ${bytes.total ? '' : 'indeterminate'}`} style={bytes.total ? { width: `${percent}%` } : undefined} />
                 </div>
-                <p className="update-modal-message">{t('update.keepOpen', { progress })}</p>
+                <div className="pn-progress-meta">
+                  <span>{bytes.total ? `${percent}%` : ''}</span>
+                  <span>{bytes.total ? t('update.downloadedOf', { done: mb(bytes.done), total: mb(bytes.total) }) : ''}</span>
+                </div>
+                <p className="pn-sheet-text small">{t('update.safe')}</p>
               </>
             )}
 
             {status === 'done' && (
               <>
-                <h3 className="update-modal-title">{t('update.restarting')}</h3>
-                <p className="update-modal-message">{t('update.reopening')}</p>
+                <h3 id="pn-update-title" className="pn-sheet-title">{t('update.restarting')}</h3>
+                <p className="pn-sheet-text">{t('update.reopening')}</p>
+              </>
+            )}
+
+            {status === 'failed' && (
+              <>
+                <h3 id="pn-update-title" className="pn-sheet-title">{t('update.failed')}</h3>
+                <p className="pn-sheet-text">{t('update.failedHint')}</p>
+                <button className="pn-btn primary" onClick={handleUpdate} autoFocus>
+                  {t('update.retry')}
+                </button>
+                <div className="pn-sheet-links">
+                  <button className="pn-link" onClick={handleLater}>{t('update.close')}</button>
+                </div>
               </>
             )}
           </motion.div>
