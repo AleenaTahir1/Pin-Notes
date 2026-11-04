@@ -149,8 +149,9 @@ html, body, #root {
   border-radius: 50%;
   cursor: pointer;
   color: var(--text-mid);
-  transition: box-shadow 0.15s, color 0.15s, transform 0.15s, background 0.15s;
+  transition: box-shadow 0.1s, color 0.1s, background 0.1s;
   -webkit-app-region: no-drag;
+  position: relative;
   /* Neumorphic raised */
   box-shadow:
     1px 1px 3px rgba(0, 0, 0, 0.10),
@@ -159,14 +160,13 @@ html, body, #root {
 
 .titlebar-btn:hover {
   color: var(--text-dark);
-  transform: scale(1.1);
   box-shadow:
     2px 2px 4px rgba(0, 0, 0, 0.12),
     -2px -2px 4px rgba(255, 255, 255, 0.8);
 }
 
 .titlebar-btn:active {
-  transform: scale(0.95);
+  transition-duration: 0s;
   /* Neumorphic pressed inset */
   box-shadow:
     inset 1px 1px 3px rgba(0, 0, 0, 0.12),
@@ -286,17 +286,20 @@ html, body, #root {
   border: 2px solid transparent;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.1s, box-shadow 0.1s, filter 0.1s;
   box-shadow:
     2px 2px 4px rgba(0, 0, 0, 0.10),
     -2px -2px 4px rgba(255, 255, 255, 0.8);
 }
 
 .color-option:hover {
-  transform: scale(1.15);
   box-shadow:
-    3px 3px 5px rgba(0, 0, 0, 0.12),
-    -3px -3px 5px rgba(255, 255, 255, 0.9);
+    0 0 0 2px rgba(0, 0, 0, 0.18),
+    3px 3px 5px rgba(0, 0, 0, 0.12);
+}
+.color-option:active {
+  filter: brightness(0.9);
+  transition-duration: 0s;
 }
 
 .color-option.active {
@@ -387,12 +390,16 @@ html, body, #root {
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.12s ease;
+  transition: box-shadow 0.1s, filter 0.1s;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 .hl-popover-dot:hover {
-  transform: scale(1.2);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.hl-popover-dot:active {
+  filter: brightness(0.88);
+  transition-duration: 0s;
 }
 
 .hl-popover-eraser {
@@ -437,10 +444,15 @@ html, body, #root {
 }
 
 /* ===== Editor (CodeMirror 6) ===== */
+/* The editor lives in a host pinned to the note's exact box (not "100% of a flex item",
+   which WebKit lets grow with the text). A fixed height is what makes the editor scroll
+   and follow the cursor. */
+.note-editor-host {
+  position: absolute;
+  inset: 0;
+}
 .note-editor .cm-editor {
-  flex: 1;
   height: 100%;
-  min-height: 0;
   background: transparent;
   color: var(--text-dark);
   font-family: var(--editor-font, var(--font-hand));
@@ -457,7 +469,8 @@ html, body, #root {
   overscroll-behavior: contain;
 }
 .note-editor .cm-content {
-  padding: 12px 14px 16px;
+  /* Room after the last line so the line being written never sits on the bottom edge. */
+  padding: 12px 14px 2.6em;
   cursor: text;
 }
 .note-editor .cm-line { padding: 0; }
@@ -645,21 +658,20 @@ html, body, #root {
   font-family: var(--font-hand);
   font-size: 15px;
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
+  transition: box-shadow 0.1s, background 0.1s, filter 0.1s;
   box-shadow:
     3px 3px 6px rgba(0, 0, 0, 0.08),
     -3px -3px 6px rgba(255, 255, 255, 0.9);
 }
 
 .delete-modal-btn:hover {
-  transform: scale(1.04);
   box-shadow:
     4px 4px 8px rgba(0, 0, 0, 0.10),
     -4px -4px 8px rgba(255, 255, 255, 0.95);
 }
 
 .delete-modal-btn:active {
-  transform: scale(0.96);
+  transition-duration: 0s;
   box-shadow:
     inset 2px 2px 4px rgba(0, 0, 0, 0.08),
     inset -2px -2px 4px rgba(255, 255, 255, 0.9);
@@ -1167,13 +1179,13 @@ html, body, #root {
   font-family: var(--font-hand);
   font-size: 15px;
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
+  transition: box-shadow 0.1s, background 0.1s, filter 0.1s;
   box-shadow:
     3px 3px 6px rgba(0, 0, 0, 0.08),
     -3px -3px 6px rgba(255, 255, 255, 0.9);
 }
-.update-modal-btn:hover { transform: scale(1.04); }
-.update-modal-btn:active { transform: scale(0.96); }
+.update-modal-btn:hover { filter: brightness(1.04); }
+.update-modal-btn:active { filter: brightness(0.92); transition-duration: 0s; }
 .update-modal-btn.skip {
   background: #f5f5f5;
   color: var(--text-mid);
@@ -1639,4 +1651,40 @@ html, body, #root {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ===== Button feel =====
+   The clickable box never moves or shrinks, so a click can't slip off it between press
+   and release. Only the icon inside reacts: a small lift on hover, an instant squeeze on
+   press. Titlebar buttons also get a slightly larger invisible hit area that closes the
+   gaps between them, so a near-miss presses the button instead of dragging the note. */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+button > svg,
+button > span {
+  transition: transform 90ms ease-out;
+}
+button:hover:not(:disabled) > svg,
+button:hover:not(:disabled) > span {
+  transform: scale(1.08);
+}
+button:active:not(:disabled) > svg,
+button:active:not(:disabled) > span {
+  transform: scale(0.86);
+  transition-duration: 30ms;
+}
+.titlebar-btn::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+}
+.note-titlebar,
+.notes-list-header {
+  -webkit-user-select: none;
+  user-select: none;
 }

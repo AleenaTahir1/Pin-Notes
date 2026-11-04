@@ -89,6 +89,9 @@ pub fn create_note_window(app: &AppHandle, note: &Note, focus: bool) -> Result<(
         .always_on_top(note.always_on_top)
         // Notes live in the tray, not the taskbar (one button per note was issue #1).
         .skip_taskbar(true)
+        // macOS: a click on a note that isn't focused presses the button right away
+        // instead of only activating the window (which made buttons need two clicks).
+        .accept_first_mouse(true)
         .resizable(true)
         // Start hidden — the frontend reveals the window once the note has painted, so it
         // opens smoothly instead of flashing an empty transparent window first.
@@ -172,6 +175,7 @@ pub fn create_notes_list_window(app: &AppHandle) -> Result<(), String> {
         .title(crate::i18n::window_title(&lang, false))
         .inner_size(300.0, 480.0)
         .position(50.0, 50.0)
+        .accept_first_mouse(true)
         .decorations(false)
         .always_on_top(true)
         .resizable(true)

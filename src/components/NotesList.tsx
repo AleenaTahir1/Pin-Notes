@@ -244,8 +244,6 @@ export function NotesList() {
             className={`notes-list-theme-btn obsidian-btn ${vaultPath ? 'connected' : ''}`}
             onClick={vaultPath ? handleDisconnectObsidian : handleConnectObsidian}
             title={vaultPath ? t('notesList.disconnectObsidian') : t('notesList.connectObsidian')}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
           >
             {vaultPath ? (
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -266,8 +264,6 @@ export function NotesList() {
             className="notes-list-theme-btn"
             onClick={toggleTheme}
             title={theme === 'dark' ? t('notesList.switchToLight') : t('notesList.switchToDark')}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
           >
             {theme === 'dark' ? (
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -295,8 +291,6 @@ export function NotesList() {
                 toggleNewMenu();
               }}
               title={t('notesList.newNoteTitle')}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
             >
               +
             </motion.button>
@@ -357,8 +351,6 @@ export function NotesList() {
             className="notes-list-minimize-btn"
             onClick={handleMinimize}
             title={t('notesList.minimize')}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -368,8 +360,6 @@ export function NotesList() {
             className="notes-list-close-btn"
             onClick={handleClose}
             title={t('notesList.close')}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -443,7 +433,6 @@ export function NotesList() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -100 }}
                 transition={{ duration: 0.25, delay: index * 0.05 }}
-                whileHover={{ x: 4 }}
                 layout
               >
                 <motion.button
@@ -453,8 +442,6 @@ export function NotesList() {
                     handleTogglePin(note.id);
                   }}
                   title={note.is_pinned ? t('notesList.unpin') : t('notesList.pin')}
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.8 }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill={note.is_pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 17v5" />
@@ -477,8 +464,6 @@ export function NotesList() {
                     handleDeleteNote(note.id);
                   }}
                   title={t('notesList.delete')}
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.8 }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18" />

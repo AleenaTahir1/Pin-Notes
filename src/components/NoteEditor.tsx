@@ -29,8 +29,9 @@ const HL_SWATCH: Record<HighlighterColor, string> = {
 };
 const HL_ORDER: HighlighterColor[] = ['yellow', 'pink', 'green', 'blue', 'purple'];
 
-// Keep a little room under the caret so a new line never sits flush on the bottom edge.
-const scrollRoom = EditorView.scrollMargins.of(() => ({ top: 8, bottom: 28 }));
+// Keep about a line and a half of room under the caret, so writing at the bottom of
+// the note turns the page early instead of typing against (or past) the edge.
+const scrollRoom = EditorView.scrollMargins.of((view) => ({ top: 8, bottom: Math.round(view.defaultLineHeight * 1.5) }));
 
 /**
  * The note editor. The document is the stored markdown itself (no HTML conversion),
@@ -210,7 +211,8 @@ export function NoteEditor({
   } as React.CSSProperties;
 
   return (
-    <div className={`note-editor ${previewMode ? 'is-preview' : ''}`} style={typeStyle} ref={hostRef}>
+    <div className={`note-editor ${previewMode ? 'is-preview' : ''}`} style={typeStyle}>
+      <div className="note-editor-host" ref={hostRef} />
       {anchor && !previewMode && createPortal(
         <div
           ref={popoverRef}
