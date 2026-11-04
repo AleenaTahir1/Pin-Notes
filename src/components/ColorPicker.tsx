@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { NOTE_COLORS } from '../types';
+import { useI18n, type MessageKey } from '../store/i18n';
 
 interface ColorPickerProps {
   currentColor: string;
@@ -9,6 +10,7 @@ interface ColorPickerProps {
 }
 
 export function ColorPicker({ currentColor, onColorChange, isOpen, onClose }: ColorPickerProps) {
+  const { t } = useI18n();
   if (!isOpen) return null;
 
   return (
@@ -30,7 +32,7 @@ export function ColorPicker({ currentColor, onColorChange, isOpen, onClose }: Co
               onColorChange(color);
               onClose();
             }}
-            title={name.charAt(0).toUpperCase() + name.slice(1)}
+            title={t(`color.${name}` as MessageKey)}
           />
         ))}
       </div>

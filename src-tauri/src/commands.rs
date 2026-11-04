@@ -1,7 +1,24 @@
-use crate::settings::SettingsStore;
+use crate::settings::{Settings, SettingsStore};
 use crate::storage::{Note, NotesStorage};
 use crate::window::{create_notes_list_window, note_label, show_note, spawn_new_note};
 use tauri::{AppHandle, Manager, State};
+
+/// Full app settings for the frontend (edge docking is read by every note window).
+#[tauri::command]
+pub fn get_settings(settings: State<'_, SettingsStore>) -> Result<Settings, String> {
+    settings.snapshot()
+}
+
+/// Switch the UI language. Persists it for the Rust side (tray, window titles)
+/// and updates already-open windows; the webviews themselves sync through
+/// localStorage and only call this to keep the native shell in sync.
+#[tauri::command]
+pub fn set_language(
+    app: AppHandle,
+    language: String,
+) -> Result<(), String> {
+    crate::tray::set_app_language(&app, language)
+}
 
 /// If a vault is connected, remove the `.md` file for a deleted note.
 fn mirror_delete(settings: &SettingsStore, id: &str) {

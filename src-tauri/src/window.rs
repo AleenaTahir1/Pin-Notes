@@ -1,3 +1,4 @@
+use crate::settings::SettingsStore;
 use crate::storage::{Note, NotesStorage};
 use tauri::image::Image;
 use tauri::{AppHandle, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
@@ -20,7 +21,11 @@ fn track_position(window: &WebviewWindow, app: &AppHandle, id: String) {
     window.on_window_event(move |event| {
         if let WindowEvent::Moved(pos) = event {
             // Minimized windows on Windows report (-32000, -32000); ignore those.
-            if pos.x <= -30000 || pos.y <= -30000 || win.is_minimized().unwrap_or(false) {
+            if pos.x <= -30000
+                || pos.y <= -30000
+                || win.is_minimized().unwrap_or(false)
+                || crate::edge_dock::is_docked_hidden(&app, &id)
+            {
                 return;
             }
             let scale = win.scale_factor().unwrap_or(1.0);
@@ -69,8 +74,10 @@ pub fn create_note_window(app: &AppHandle, note: &Note, focus: bool) -> Result<(
     let query = if focus { "&focus=1" } else { "" };
     let url = WebviewUrl::App(format!("index.html?noteId={}{}", note.id, query).into());
 
+    let settings = app.state::<SettingsStore>();
+    let lang = settings.language();
     let window = WebviewWindowBuilder::new(app, &window_label, url)
-        .title("Pin Note")
+        .title(crate::i18n::window_title(&lang, true))
         .focused(focus)
         .inner_size(note.width as f64, note.height as f64)
         // Keep notes freeform: allow shrinking down to a thin one-line note (titlebar +
@@ -159,8 +166,10 @@ pub fn create_notes_list_window(app: &AppHandle) -> Result<(), String> {
 
     let url = WebviewUrl::App("index.html?view=list".into());
 
+    let settings = app.state::<SettingsStore>();
+    let lang = settings.language();
     let window = WebviewWindowBuilder::new(app, window_label, url)
-        .title("Pin Notes")
+        .title(crate::i18n::window_title(&lang, false))
         .inner_size(300.0, 480.0)
         .position(50.0, 50.0)
         .decorations(false)

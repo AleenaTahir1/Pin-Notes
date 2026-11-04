@@ -7,6 +7,7 @@ import { HighlighterColor } from '../types';
 import { noteMarkdown } from '../editor/markdown';
 import { livePreview, previewFacet } from '../editor/livePreview';
 import { applyHighlight, removeHighlight } from '../editor/highlight';
+import { useI18n, type MessageKey } from '../store/i18n';
 
 interface NoteEditorProps {
   content: string;
@@ -47,6 +48,8 @@ export function NoteEditor({
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const modeRef = useRef(new Compartment());
+  const placeholderRef = useRef(new Compartment());
+  const { t, lang } = useI18n();
   // The latest text we emitted, so our own echo back through props isn't re-applied.
   const emitted = useRef(content);
   const onChangeRef = useRef(onContentChange);
@@ -96,7 +99,7 @@ export function NoteEditor({
           noteMarkdown(),
           livePreview,
           scrollRoom,
-          placeholder('Write something...'),
+          placeholderRef.current.of(placeholder(t('editor.placeholder'))),
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           EditorView.contentAttributes.of({ spellcheck: 'false', autocorrect: 'off', 'aria-label': 'Note text' }),
           modeRef.current.of([previewFacet.of(false), EditorView.editable.of(true)]),
@@ -152,6 +155,13 @@ export function NoteEditor({
     });
     if (previewMode) setAnchor(null);
   }, [previewMode]);
+
+  // Follow the UI language.
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: placeholderRef.current.reconfigure(placeholder(t('editor.placeholder'))),
+    });
+  }, [lang, t]);
 
   // Re-measure after font changes so the caret and wrapping stay in sync.
   useEffect(() => {
@@ -215,14 +225,14 @@ export function NoteEditor({
               type="button"
               className="hl-popover-dot"
               style={{ backgroundColor: HL_SWATCH[color] }}
-              title={`${color.charAt(0).toUpperCase() + color.slice(1)} highlight`}
+              title={t('editor.highlightTitle', { color: t(`highlight.${color}` as MessageKey) })}
               onClick={() => run((s) => applyHighlight(s, color))}
             />
           ))}
           <button
             type="button"
             className="hl-popover-eraser"
-            title="Remove highlight"
+            title={t('editor.removeHighlight')}
             onClick={() => run(removeHighlight)}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
