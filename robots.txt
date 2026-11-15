@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://aleenatahir1.github.io/Pin-Notes/sitemap.xml

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pin Notes: free sticky notes that stay on top (Windows and macOS)</title>
+<meta name="description" content="Pin Notes is a free, open source sticky notes app for Windows and macOS. Notes stay on top of your other windows, with checklists, highlights and markdown as you type. Local, no account, about 5 MB." />
+<link rel="canonical" href="https://aleenatahir1.github.io/Pin-Notes/" />
+<link rel="icon" type="image/png" href="assets/img/favicon.png" />
+<link rel="apple-touch-icon" href="assets/img/logo-180.png" />
+<meta name="theme-color" content="#F6F0E4" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Pin Notes" />
+<meta property="og:title" content="Pin Notes: sticky notes that stay on top" />
+<meta property="og:description" content="Free, open source floating sticky notes for Windows and macOS. Checklists, highlights and markdown as you type. No account." />
+<meta property="og:url" content="https://aleenatahir1.github.io/Pin-Notes/" />
+<meta property="og:image" content="https://aleenatahir1.github.io/Pin-Notes/assets/img/og.png" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="640" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Pin Notes: sticky notes that stay on top" />
+<meta name="twitter:description" content="Free, open source floating sticky notes for Windows and macOS." />
+<meta name="twitter:image" content="https://aleenatahir1.github.io/Pin-Notes/assets/img/og.png" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Pin Notes",
+  "operatingSystem": "Windows 10, Windows 11, macOS 10.15 or later",
+  "applicationCategory": "ProductivityApplication",
+  "description": "Free, open source floating sticky notes that stay on top of other windows, with checklists, highlights and live markdown.",
+  "softwareVersion": "1.1.0",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "downloadUrl": "https://github.com/AleenaTahir1/Pin-Notes/releases/latest",
+  "image": "https://aleenatahir1.github.io/Pin-Notes/assets/img/og.png",
+  "author": { "@type": "Person", "name": "Aleena Tahir", "url": "https://aleenatahir.me" }
+}
+</script>
+
+<style>
+@font-face { font-family: "Caveat"; src: url(assets/fonts/caveat-latin-700-normal.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Caveat"; src: url(assets/fonts/caveat-latin-500-normal.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url(assets/fonts/manrope-latin-wght-normal.woff2) format("woff2"); font-weight: 200 800; font-display: swap; }
+
+:root {
+  --paper: #F6F0E4;
+  --card: #FFFDF8;
+  --ink: #2A2520;
+  --ink-soft: #5E554B;
+  --mute: #8C8276;
+  --line: rgba(42, 37, 32, 0.1);
+  --yellow: #FFE873;
+  --pin: #E2453C;
+  --green: #43A047;
+  --hand: "Caveat", "Patrick Hand", cursive;
+  --body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(900px 600px at 15% 0%, #FFF3B8aa, transparent 70%),
+    radial-gradient(800px 600px at 95% 25%, #FFE1EE99, transparent 70%),
+    radial-gradient(rgba(60, 45, 30, 0.06) 1px, transparent 1.2px);
+  background-size: auto, auto, 26px 26px;
+}
+img { display: block; max-width: 100%; }
+a { color: inherit; }
+.wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+/* nav */
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--hand); font-weight: 700; font-size: 34px; }
+.brand img { width: 44px; height: 44px; }
+.nav-links { display: flex; align-items: center; gap: 22px; font-weight: 600; font-size: 15px; }
+.nav-links a { text-decoration: none; color: var(--ink-soft); }
+.nav-links a:hover { color: var(--ink); }
+@media (max-width: 640px) { .nav-links a:not(.btn) { display: none; } .brand { font-size: 28px; } .brand img { width: 36px; height: 36px; } }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 24px; border-radius: 14px;
+  font-family: var(--body); font-weight: 700; font-size: 16px; text-decoration: none;
+  transition: filter 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn.primary { background: var(--ink); color: #fff; box-shadow: 0 12px 28px rgba(42, 37, 32, 0.25); }
+.btn.primary:hover { filter: brightness(1.15); }
+.btn.secondary { background: var(--card); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 8px 20px rgba(42, 37, 32, 0.08); }
+.btn.secondary:hover { background: #fff; }
+.btn:active { filter: brightness(0.92); }
+.btn:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+.btn.small { padding: 9px 16px; font-size: 14px; border-radius: 11px; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; padding: 40px 0 70px; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--line); font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+.eyebrow b { color: var(--green); }
+h1 { font-family: var(--hand); font-weight: 700; font-size: clamp(58px, 8vw, 104px); line-height: 0.95; margin: 18px 0 18px; letter-spacing: -0.5px; }
+h1 .mark { background: linear-gradient(transparent 58%, var(--yellow) 58%, var(--yellow) 92%, transparent 92%); padding: 0 6px; }
+.lede { font-size: 20px; color: var(--ink-soft); max-width: 520px; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.mac-links { margin-top: 12px; font-size: 14px; color: var(--mute); }
+.mac-links a { color: var(--ink-soft); font-weight: 700; }
+.meta { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+.meta span { padding: 5px 12px; border-radius: 999px; background: rgba(42, 37, 32, 0.07); font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+
+.stack { position: relative; height: 520px; }
+.stack .win {
+  position: absolute; border-radius: 14px; background: #fff; box-shadow: 0 24px 60px rgba(40, 30, 20, 0.16), 0 0 0 1px rgba(40, 30, 20, 0.05); overflow: hidden;
+}
+.stack .win::before { content: ""; display: block; height: 34px; background: #F2EFEA; }
+.stack .win i { display: block; height: 11px; margin: 14px 22px 0; border-radius: 6px; background: #ECE7E0; }
+.stack .note { position: absolute; border-radius: 8px; filter: drop-shadow(0 26px 40px rgba(60, 40, 20, 0.22)) drop-shadow(0 4px 10px rgba(60, 40, 20, 0.1)); animation: float 7s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-8px) rotate(var(--r)); } }
+.stack .note { transform: rotate(var(--r)); }
+.pin-chip { position: absolute; z-index: 5; padding: 8px 16px; border-radius: 999px; background: var(--pin); color: #fff; font-weight: 800; font-size: 14px; box-shadow: 0 10px 24px rgba(226, 69, 60, 0.35); white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding-top: 10px; }
+  .stack { height: 420px; }
+}
+@media (prefers-reduced-motion: reduce) { .stack .note { animation: none; } html { scroll-behavior: auto; } }
+
+/* video */
+.video-card { position: relative; border-radius: 22px; overflow: hidden; background: #000; box-shadow: 0 30px 80px rgba(40, 30, 20, 0.25); }
+.video-card video { display: block; width: 100%; height: auto; }
+
+/* sections */
+section { padding: 70px 0; }
+h2 { font-family: var(--hand); font-weight: 700; font-size: clamp(44px, 5.5vw, 66px); line-height: 1; margin-bottom: 12px; }
+.section-sub { color: var(--ink-soft); font-size: 18px; max-width: 620px; margin-bottom: 40px; }
+
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.feature { background: var(--card); border-radius: 20px; padding: 24px; box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgba(40, 30, 20, 0.06); display: flex; flex-direction: column; }
+.feature h3 { font-size: 19px; font-weight: 800; margin-bottom: 6px; }
+.feature p { color: var(--ink-soft); font-size: 15.5px; }
+.feature .shot { margin: 18px -6px -6px; display: flex; justify-content: center; align-items: flex-end; flex: 1; min-height: 190px; }
+.feature .shot img { width: 78%; border-radius: 8px; filter: drop-shadow(0 16px 26px rgba(60, 40, 20, 0.2)); }
+.feature.dark { background: #26252b; color: #F4F1EC; }
+.feature.dark p { color: #C9C3D6; }
+@media (max-width: 900px) { .features { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .features { grid-template-columns: 1fr; } }
+
+.more { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 40px; margin-top: 40px; }
+.more div { display: flex; gap: 14px; align-items: flex-start; font-size: 16.5px; }
+.more div::before { content: ""; flex: none; width: 24px; height: 24px; margin-top: 2px; border-radius: 12px; background: var(--green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center/16px no-repeat; }
+.more b { font-weight: 800; }
+@media (max-width: 700px) { .more { grid-template-columns: 1fr; } }
+
+kbd { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.85em; padding: 2px 7px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 2px 0 var(--line); }
+
+/* faq */
+.faq { max-width: 780px; }
+details { background: var(--card); border-radius: 16px; box-shadow: 0 0 0 1px var(--line); margin-bottom: 12px; }
+summary { cursor: pointer; list-style: none; padding: 18px 22px; font-weight: 800; font-size: 17px; display: flex; justify-content: space-between; gap: 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; font-size: 22px; line-height: 1; color: var(--mute); }
+details[open] summary::after { content: "−"; }
+details p, details ol { padding: 0 22px 18px; color: var(--ink-soft); }
+details ol { padding-left: 44px; }
+
+/* closing */
+.closing { text-align: center; padding: 80px 0 60px; }
+.closing img { width: 120px; margin: 0 auto 6px; }
+.closing .cta { justify-content: center; }
+footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--mute); font-size: 14px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+footer a { color: var(--ink-soft); font-weight: 700; text-decoration: none; }
+footer a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="./"><img src="assets/img/logo-180.png" alt="" width="44" height="44" />Pin Notes</a>
+    <div class="nav-links">
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#faq">FAQ</a>
+      <a href="https://github.com/AleenaTahir1/Pin-Notes">GitHub</a>
+      <a class="btn primary small" href="#download" data-dl="auto">Download</a>
+    </div>
+  </nav>
+
+  <header class="hero" id="download">
+    <div>
+      <span class="eyebrow"><b>New</b> Version 1.1.0 with a smoother editor</span>
+      <h1>Sticky notes that <span class="mark">stay on top.</span></h1>
+      <p class="lede">Free, open source floating notes for Windows and macOS. Write checklists, highlights and headings as you type, and keep the note above your other windows while you work.</p>
+      <div class="cta">
+        <a class="btn primary" data-dl="win" href="https://github.com/AleenaTahir1/Pin-Notes/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5l7.5-1v7H3zM11.5 4.3L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg>
+          Download for Windows
+        </a>
+        <a class="btn secondary" data-dl="mac-arm" href="https://github.com/AleenaTahir1/Pin-Notes/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.2 1-4 2.5-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.6-4.1zM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>
+          Download for Mac
+        </a>
+      </div>
+      <p class="mac-links">Mac with Apple chip (M1 to M4) uses the button above. <a data-dl="mac-intel" href="https://github.com/AleenaTahir1/Pin-Notes/releases/latest">Intel Mac version</a></p>
+      <div class="meta"><span>Free</span><span>Open source (MIT)</span><span>About 5 MB</span><span>No account</span><span>Updates itself</span></div>
+    </div>
+
+    <div class="stack" aria-hidden="true">
+      <div class="win" style="left:0;top:40px;width:72%;height:300px"><i style="width:70%"></i><i style="width:85%"></i><i style="width:55%"></i><i style="width:78%"></i></div>
+      <div class="win" style="left:22%;top:150px;width:74%;height:310px"><i style="width:60%"></i><i style="width:88%"></i><i style="width:72%"></i><i style="width:50%"></i></div>
+      <img class="note" src="assets/img/note-today.webp" alt="" style="--r:-3deg;left:30%;top:20px;width:58%;z-index:3" />
+      <img class="note" src="assets/img/note-coffee.webp" alt="" style="--r:4deg;left:4%;top:330px;width:46%;z-index:4;animation-delay:-3s" />
+      <span class="pin-chip" style="left:66%;top:6px">Always on top</span>
+    </div>
+  </header>
+
+  <div class="video-card">
+    <video controls muted playsinline preload="none" poster="assets/video/poster.jpg" aria-label="Pin Notes in 45 seconds">
+      <source src="assets/video/pin-notes.mp4" type="video/mp4" />
+    </video>
+  </div>
+
+  <section id="features">
+    <h2>Small app. Lots of care.</h2>
+    <p class="section-sub">Pin Notes does one job well: a note you can always see, that is nice to write in.</p>
+    <div class="features">
+      <article class="feature">
+        <h3>Stays on top, if you want</h3>
+        <p>Notes float above your browser, editor and chats. Tap the pin on a note to let it sit behind other windows instead.</p>
+        <div class="shot"><img src="assets/img/note-today.webp" alt="A Pin Notes note with a ticked checklist" loading="lazy" /></div>
+      </article>
+      <article class="feature">
+        <h3>Writes like you think</h3>
+        <p>Headings, bullet lists and checkboxes appear as you type. Press Enter and the list continues, and the page follows your cursor.</p>
+        <div class="shot"><img src="assets/img/type-094.webp" alt="A grocery checklist being written in Pin Notes" loading="lazy" /></div>
+      </article>
+      <article class="feature">
+        <h3>Highlight what matters</h3>
+        <p>Select any words and pick one of five highlight colours. Undo and redo work everywhere.</p>
+        <div class="shot"><img src="assets/img/highlight-strip.webp" alt="The highlight colour strip over selected text" loading="lazy" /></div>
+      </article>
+      <article class="feature">
+        <h3>Eight soft colours, three fonts</h3>
+        <p>Pastel paper, handwriting or clean type, and a text size for every note. Each note remembers its own style.</p>
+        <div class="shot"><img src="assets/img/note-ideas.webp" alt="A light blue note with highlights" loading="lazy" /></div>
+      </article>
+      <article class="feature dark">
+        <h3>Dark mode, still pastel</h3>
+        <p>One click turns every note dark while keeping a hint of its colour.</p>
+        <div class="shot"><img src="assets/img/note-dark-lilac.webp" alt="A note in dark mode" loading="lazy" /></div>
+      </article>
+      <article class="feature">
+        <h3>All your notes in one place</h3>
+        <p>Search, pin favourites to the top, start from templates, and reopen any note you closed.</p>
+        <div class="shot"><img src="assets/img/notes-list.webp" alt="The Pin Notes list window" loading="lazy" style="width:62%" /></div>
+      </article>
+    </div>
+
+    <div class="more">
+      <div><span><b>Two-way Obsidian sync.</b> Point it at a folder in your vault and edits flow both ways.</span></div>
+      <div><span><b><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>P</kbd></b> makes a new note from anywhere.</span></div>
+      <div><span><b>Lives in the tray,</b> not the taskbar. Hide a note and bring it back any time.</span></div>
+      <div><span><b>Edge Dock.</b> Tuck a note into the screen edge; hover to bring it out.</span></div>
+      <div><span><b>Remembers where you put it.</b> Notes reopen in the same place and size.</span></div>
+      <div><span><b>Your notes stay yours.</b> Saved on your computer with a backup copy. No account, no cloud.</span></div>
+      <div><span><b>Launch at startup</b> and <b>English or Chinese</b>, from the tray menu.</span></div>
+      <div><span><b>Updates itself.</b> New versions arrive with a short note about what changed.</span></div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <h2>Questions</h2>
+    <div class="faq">
+      <details>
+        <summary>Is it really free?</summary>
+        <p>Yes. Pin Notes is free and open source under the MIT license. There are no ads, no account and no paid tier. The code is on <a href="https://github.com/AleenaTahir1/Pin-Notes">GitHub</a>.</p>
+      </details>
+      <details>
+        <summary>Where are my notes stored?</summary>
+        <p>On your own computer, in a small file in your user folder, with a backup copy kept automatically. Nothing is uploaded anywhere. If you connect an Obsidian vault, notes are also saved there as markdown files.</p>
+      </details>
+      <details>
+        <summary>Windows says "Windows protected your PC". Is that safe?</summary>
+        <p>That message appears for apps from small developers that are not code signed yet. Click <b>More info</b>, then <b>Run anyway</b>. You can check every line of the source code on GitHub.</p>
+      </details>
+      <details>
+        <summary>My Mac says the app can't be opened.</summary>
+        <ol>
+          <li>Open the downloaded file and drag Pin Notes into Applications.</li>
+          <li>Open it once. When macOS warns you, click Done.</li>
+          <li>Go to <b>System Settings › Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Which systems does it run on?</summary>
+        <p>Windows 10 and 11, and macOS 10.15 or later on both Apple chip and Intel Macs.</p>
+      </details>
+      <details>
+        <summary>How do I report a bug or ask for a feature?</summary>
+        <p>Open an issue on <a href="https://github.com/AleenaTahir1/Pin-Notes/issues">GitHub</a>. Feedback is very welcome.</p>
+      </details>
+    </div>
+  </section>
+
+  <div class="closing">
+    <img src="assets/img/logo-180.png" alt="" width="120" height="120" />
+    <h2>Pin your first note.</h2>
+    <p class="section-sub" style="margin:0 auto 26px">Free for Windows and macOS. About 5 MB.</p>
+    <div class="cta">
+      <a class="btn primary" data-dl="auto" href="https://github.com/AleenaTahir1/Pin-Notes/releases/latest">Download Pin Notes</a>
+      <a class="btn secondary" href="https://github.com/AleenaTahir1/Pin-Notes">Star on GitHub</a>
+    </div>
+  </div>
+
+  <footer>
+    <span>Made by <a href="https://aleenatahir.me">Aleena Tahir</a>. MIT licensed.</span>
+    <span><a href="https://github.com/AleenaTahir1/Pin-Notes/releases">All releases</a> · <a href="https://github.com/AleenaTahir1/Pin-Notes/issues">Report an issue</a></span>
+  </footer>
+</div>
+
+<script>
+// Point the download buttons at the newest release files. If GitHub's API can't be
+// reached, the buttons keep linking to the latest release page.
+(function () {
+  var isMac = /Mac/.test(navigator.platform || navigator.userAgent);
+  fetch("https://api.github.com/repos/AleenaTahir1/Pin-Notes/releases/latest")
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (rel) {
+      if (!rel) return;
+      var find = function (re) { var a = rel.assets.find(function (x) { return re.test(x.name); }); return a && a.browser_download_url; };
+      var urls = { win: find(/x64-setup\.exe$/), "mac-arm": find(/aarch64\.dmg$/), "mac-intel": find(/x64\.dmg$/) };
+      urls.auto = isMac ? urls["mac-arm"] : urls.win;
+      document.querySelectorAll("[data-dl]").forEach(function (a) {
+        var u = urls[a.getAttribute("data-dl")];
+        if (u) a.href = u;
+      });
+      var tag = rel.tag_name && rel.tag_name.replace(/^v/, "");
+      var eyebrow = document.querySelector(".eyebrow");
+      if (tag && eyebrow) eyebrow.innerHTML = "<b>New</b> Version " + tag + " is out";
+    })
+    .catch(function () {});
+  if (isMac) {
+    var win = document.querySelector('[data-dl="win"]'), mac = document.querySelector('[data-dl="mac-arm"]');
+    if (win && mac) { win.className = "btn secondary"; mac.className = "btn primary"; mac.parentNode.insertBefore(mac, win); }
+  }
+})();
+</script>
+</body>
+</html>
