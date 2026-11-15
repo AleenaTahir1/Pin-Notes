@@ -115,11 +115,7 @@ h1 .mark { background: linear-gradient(transparent 58%, var(--yellow) 58%, var(-
 .meta span { padding: 5px 12px; border-radius: 999px; background: rgba(42, 37, 32, 0.07); font-size: 13px; font-weight: 700; color: var(--ink-soft); }
 
 .stack { position: relative; height: 520px; }
-.stack .win {
-  position: absolute; border-radius: 14px; background: #fff; box-shadow: 0 24px 60px rgba(40, 30, 20, 0.16), 0 0 0 1px rgba(40, 30, 20, 0.05); overflow: hidden;
-}
-.stack .win::before { content: ""; display: block; height: 34px; background: #F2EFEA; }
-.stack .win i { display: block; height: 11px; margin: 14px 22px 0; border-radius: 6px; background: #ECE7E0; }
+.stack .shot { position: absolute; border-radius: 12px; box-shadow: 0 24px 60px rgba(40, 30, 20, 0.22), 0 0 0 1px rgba(40, 30, 20, 0.06); }
 .stack .note { position: absolute; border-radius: 8px; filter: drop-shadow(0 26px 40px rgba(60, 40, 20, 0.22)) drop-shadow(0 4px 10px rgba(60, 40, 20, 0.1)); animation: float 7s ease-in-out infinite; }
 @keyframes float { 50% { transform: translateY(-8px) rotate(var(--r)); } }
 .stack .note { transform: rotate(var(--r)); }
@@ -186,7 +182,7 @@ footer a:hover { color: var(--ink); }
       <a class="hide-sm" href="#features">Features</a>
       <a class="hide-sm" href="#faq">FAQ</a>
       <a href="https://github.com/AleenaTahir1/Pin-Notes">GitHub</a>
-      <a class="btn primary small" href="#download" data-dl="auto">Download</a>
+      <a class="btn primary small" href="#download" data-dl="auto" data-os-label>Download for Windows</a>
     </div>
   </nav>
 
@@ -210,11 +206,11 @@ footer a:hover { color: var(--ink); }
     </div>
 
     <div class="stack" aria-hidden="true">
-      <div class="win" style="left:0;top:40px;width:72%;height:300px"><i style="width:70%"></i><i style="width:85%"></i><i style="width:55%"></i><i style="width:78%"></i></div>
-      <div class="win" style="left:22%;top:150px;width:74%;height:310px"><i style="width:60%"></i><i style="width:88%"></i><i style="width:72%"></i><i style="width:50%"></i></div>
-      <img class="note" src="assets/img/note-today.webp" alt="" style="--r:-3deg;left:30%;top:20px;width:58%;z-index:3" />
-      <img class="note" src="assets/img/note-coffee.webp" alt="" style="--r:4deg;left:4%;top:330px;width:46%;z-index:4;animation-delay:-3s" />
-      <span class="pin-chip" style="left:66%;top:6px">Always on top</span>
+      <img class="shot" src="assets/img/bg-meet.jpg" alt="" style="left:0;top:40px;width:80%" />
+      <img class="shot" src="assets/img/bg-terminal.webp" alt="" style="left:30%;top:250px;width:70%" />
+      <img class="note" src="assets/img/note-meet.webp" alt="" style="--r:-3deg;left:50%;top:0;width:44%;z-index:3" />
+      <img class="note" src="assets/img/note-dev.webp" alt="" style="--r:3deg;left:4%;top:300px;width:42%;z-index:4;animation-delay:-3s" />
+      <span class="pin-chip" style="left:72%;top:-14px">Always on top</span>
     </div>
   </header>
 
@@ -231,12 +227,12 @@ footer a:hover { color: var(--ink); }
       <article class="feature">
         <h3>Stays on top, if you want</h3>
         <p>Notes float above your browser, editor and chats. Tap the pin on a note to let it sit behind other windows instead.</p>
-        <div class="shot"><img src="assets/img/note-today.webp" alt="A Pin Notes note with a ticked checklist" loading="lazy" /></div>
+        <div class="shot"><img src="assets/img/note-study.webp" alt="A study note with its pin button" loading="lazy" /></div>
       </article>
       <article class="feature">
-        <h3>Writes like you think</h3>
-        <p>Headings, bullet lists and checkboxes appear as you type. Press Enter and the list continues, and the page follows your cursor.</p>
-        <div class="shot"><img src="assets/img/type-094.webp" alt="A grocery checklist being written in Pin Notes" loading="lazy" /></div>
+        <h3>Start from a template</h3>
+        <p>Click + for a to-do list, daily note, meeting notes, groceries and more, or use your own templates from Obsidian.</p>
+        <div class="shot"><img src="assets/img/list-templates.webp" alt="The template menu in the notes list" loading="lazy" style="width:58%" /></div>
       </article>
       <article class="feature">
         <h3>Highlight what matters</h3>
@@ -251,7 +247,7 @@ footer a:hover { color: var(--ink); }
       <article class="feature dark">
         <h3>Dark mode, still pastel</h3>
         <p>One click turns every note dark while keeping a hint of its colour.</p>
-        <div class="shot"><img src="assets/img/note-dark-lilac.webp" alt="A note in dark mode" loading="lazy" /></div>
+        <div class="shot"><img src="assets/img/note-dark-plan.webp" alt="A note in dark mode" loading="lazy" /></div>
       </article>
       <article class="feature">
         <h3>All your notes in one place</h3>
@@ -261,12 +257,13 @@ footer a:hover { color: var(--ink); }
     </div>
 
     <div class="more">
-      <div><span><b>Two-way Obsidian sync.</b> Point it at a folder in your vault and edits flow both ways.</span></div>
+      <div><span><b>Two-way Obsidian sync.</b> Every note is a Markdown file in your vault, and edits flow both ways.</span></div>
       <div><span><b><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>P</kbd></b> makes a new note from anywhere.</span></div>
       <div><span><b>Lives in the tray,</b> not the taskbar. Hide a note and bring it back any time.</span></div>
       <div><span><b>Edge Dock.</b> Tuck a note into the screen edge; hover to bring it out.</span></div>
       <div><span><b>Remembers where you put it.</b> Notes reopen in the same place and size.</span></div>
       <div><span><b>Your notes stay yours.</b> Saved on your computer with a backup copy. No account, no cloud.</span></div>
+      <div><span><b>Writes like you think.</b> Enter keeps your list going and the page follows your cursor.</span></div>
       <div><span><b>Launch at startup</b> and <b>English or Chinese</b>, from the tray menu.</span></div>
       <div><span><b>Updates itself.</b> New versions arrive with a short note about what changed.</span></div>
     </div>
@@ -311,7 +308,7 @@ footer a:hover { color: var(--ink); }
     <h2>Pin your first note.</h2>
     <p class="section-sub" style="margin:0 auto 26px">Free for Windows and macOS. About 5 MB.</p>
     <div class="cta">
-      <a class="btn primary" data-dl="auto" href="https://github.com/AleenaTahir1/Pin-Notes/releases/latest">Download Pin Notes</a>
+      <a class="btn primary" data-dl="auto" data-os-label href="https://github.com/AleenaTahir1/Pin-Notes/releases/latest">Download for Windows</a>
       <a class="btn secondary" href="https://github.com/AleenaTahir1/Pin-Notes">Star on GitHub</a>
     </div>
   </div>
@@ -343,6 +340,7 @@ footer a:hover { color: var(--ink); }
       if (tag && eyebrow) eyebrow.innerHTML = "<b>New</b> Version " + tag + " is out";
     })
     .catch(function () {});
+  document.querySelectorAll("[data-os-label]").forEach(function (a) { a.textContent = isMac ? "Download for Mac" : "Download for Windows"; });
   if (isMac) {
     var win = document.querySelector('[data-dl="win"]'), mac = document.querySelector('[data-dl="mac-arm"]');
     if (win && mac) { win.className = "btn secondary"; mac.className = "btn primary"; mac.parentNode.insertBefore(mac, win); }
