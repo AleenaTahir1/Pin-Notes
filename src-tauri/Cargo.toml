@@ -2,7 +2,8 @@
 name = "pin-notes"
 version = "1.1.0"
 description = "Floating sticky notes app - fast, local, no account required"
-authors = ["you"]
+authors = ["Aleena Tahir"]
+license = "MIT"
 edition = "2021"
 
 [lib]

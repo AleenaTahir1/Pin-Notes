@@ -10,7 +10,7 @@ Pin notes to your desktop — always on top, always within reach.
 
 [![Release](https://img.shields.io/github/v/release/AleenaTahir1/Pin-Notes)](https://github.com/AleenaTahir1/Pin-Notes/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/AleenaTahir1/Pin-Notes/ci.yml)](https://github.com/AleenaTahir1/Pin-Notes/actions)
-[![License](https://img.shields.io/badge/license-Source%20Available-blue)](LICENSE.txt)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE.txt)
 
 <br/>
 
@@ -222,11 +222,7 @@ PinNotes/
 
 ## License
 
-This project uses a **Source Available** license. See [LICENSE.txt](LICENSE.txt) for details.
-
-- Free for personal and educational use
-- Free to modify for personal use
-- Commercial use requires permission
+Pin Notes is open source under the [MIT License](LICENSE.txt). Use it, change it and share it freely.
 
 ---
 
