@@ -15,7 +15,7 @@ describe('update popup helpers', () => {
     const body = `## Pin Notes v1.1.0\n\nFloating sticky notes.\n\n${releaseNotes}\n### Installation\n- **Windows** — exe`;
     const items = parseWhatsNew(body);
     expect(items.length).toBe(5); // capped
-    expect(items[0]).toMatch(/^Smoother writing/);
+    expect(items[0]).toMatch(/^Paste pictures/);
     expect(items.join(' ')).not.toContain('Windows');
   });
 

@@ -201,3 +201,89 @@ describe('types helpers', () => {
     expect(applyTemplatePlaceholders('{{date}} {{time}}')).not.toContain('{{');
   });
 });
+
+describe('pasted images', () => {
+  it('reads ![alt](path)', async () => {
+    const { parseImage } = await import('./images');
+    expect(parseImage('![](images/a.png)')).toEqual({ alt: '', path: 'images/a.png' });
+    expect(parseImage('![shot](images/b-1.jpg) after')).toEqual({ alt: 'shot', path: 'images/b-1.jpg' });
+    expect(parseImage('not an image')).toBeNull();
+  });
+  it('an image line shows the picture, not the markdown, and the text stays unchanged', async () => {
+    window.__pinImages = { 'images/a.png': 'data:image/png;base64,iVBORw0KGgo=' };
+    const doc = 'Before\n![](images/a.png)\nAfter';
+    const view = new EditorView({
+      parent: document.body,
+      state: EditorState.create({ doc, extensions: [noteMarkdown(), livePreview] }),
+    });
+    const img = view.contentDOM.querySelector('.cm-image img') as HTMLImageElement;
+    expect(img).not.toBeNull();
+    expect(view.contentDOM.textContent).not.toContain('images/a.png');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(img.src).toContain('data:image/png');
+    expect(view.state.doc.toString()).toBe(doc);
+    view.destroy();
+  });
+  it('notes with images count as markdown', () => {
+    expect(hasMarkdown('look ![](images/x.png)')).toBe(true);
+  });
+});
+
+describe('find in note', () => {
+  it('counts matches (any case) and knows which one is selected', async () => {
+    const { matchCount, findInNote } = await import('./find');
+    const { setSearchQuery, SearchQuery, findNext } = await import('@codemirror/search');
+    const view = new EditorView({
+      parent: document.body,
+      state: EditorState.create({ doc: 'Milk, eggs\nmilk again\nno match here\nMILK', extensions: [noteMarkdown(), findInNote] }),
+    });
+    view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: 'milk' })) });
+    expect(matchCount(view.state)).toEqual({ total: 3, current: 0 });
+    findNext(view);
+    expect(matchCount(view.state)).toEqual({ total: 3, current: 1 });
+    findNext(view);
+    expect(matchCount(view.state).current).toBe(2);
+    view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: 'zebra' })) });
+    expect(matchCount(view.state).total).toBe(0);
+    view.destroy();
+  });
+  it('Ctrl+F opens the find bar and Esc closes it', async () => {
+    const { findInNote, toggleFind } = await import('./find');
+    const { searchPanelOpen } = await import('@codemirror/search');
+    const view = new EditorView({ parent: document.body, state: EditorState.create({ doc: 'abc', extensions: [findInNote] }) });
+    toggleFind(view);
+    expect(searchPanelOpen(view.state)).toBe(true);
+    expect(view.dom.querySelector('.cm-find .cm-find-input')).not.toBeNull();
+    toggleFind(view);
+    expect(searchPanelOpen(view.state)).toBe(false);
+    view.destroy();
+  });
+});
+
+describe('save as', () => {
+  const md = '# Meeting notes\nAttendees: **Sara**\n- [x] Send slides\n- [ ] Book =={pink}room==\n- coffee\n> quote\n![](images/abc.png)\nPrice `a*b`';
+  it('title and image paths', async () => {
+    const { noteTitle, imagePaths, imagesFolderFor } = await import('./exportNote');
+    expect(noteTitle(md)).toBe('Meeting notes');
+    expect(noteTitle('![](images/x.png)\n')).toBe('Pin Note');
+    expect(noteTitle('# a/b: c?')).toBe('a-b- c-');
+    expect(imagePaths(md)).toEqual(['images/abc.png']);
+    expect(imagesFolderFor('My notes 1.md')).toBe('My-notes-1-images');
+  });
+  it('plain text has no markdown marks', async () => {
+    const { noteToText } = await import('./exportNote');
+    expect(noteToText(md)).toBe('Meeting notes\nAttendees: Sara\n[x] Send slides\n[ ] Book room\n• coffee\nquote\n[Image]\nPrice a*b');
+  });
+  it('web page has headings, checkboxes, highlights and embedded pictures, and escapes HTML', async () => {
+    const { noteToHtmlPage } = await import('./exportNote');
+    const html = noteToHtmlPage(md + '\n<script>x</script>', (p) => (p === 'images/abc.png' ? 'data:image/png;base64,AAA' : p));
+    expect(html).toContain('<h1>Meeting notes</h1>');
+    expect(html).toContain('<strong>Sara</strong>');
+    expect(html).toContain('☑ <s>Send slides</s>');
+    expect(html).toContain('<mark style="background:#f8bbd9">room</mark>');
+    expect(html).toContain('<img src="data:image/png;base64,AAA"');
+    expect(html).toContain('<blockquote>quote</blockquote>');
+    expect(html).not.toContain('<script>x');
+    expect(html).toContain('<title>Meeting notes</title>');
+  });
+});

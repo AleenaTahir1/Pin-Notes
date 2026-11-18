@@ -274,6 +274,19 @@ pub fn write_note_file(vault: &Path, note: &Note) -> std::io::Result<()> {
     fs::write(&target, note_markdown(note, &extra))
 }
 
+/// Copy the images a note uses from one `images` folder to another (app <-> vault),
+/// skipping ones that are already there.
+pub fn copy_images(content: &str, from_dir: &Path, to_dir: &Path) {
+    for path in crate::storage::image_refs(content) {
+        let name = &path["images/".len()..];
+        let (src, dst) = (from_dir.join(name), to_dir.join(name));
+        if src.exists() && !dst.exists() {
+            let _ = fs::create_dir_all(to_dir);
+            let _ = fs::copy(&src, &dst);
+        }
+    }
+}
+
 /// Delete the `.md` file that belongs to a note id, if any.
 pub fn delete_note_file(vault: &Path, id: &str) {
     for (p, parsed) in scan_vault(vault) {
@@ -295,6 +308,8 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
     };
     let files = scan_vault(vault);
     let mut changed = false;
+    let app_images = storage.images_dir();
+    let vault_images = vault.join("images");
     let mut ids_with_files: HashSet<String> = HashSet::new();
 
     // --- Pull: walk every file in the vault ---
@@ -310,6 +325,7 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                             // Obsidian edit wins. Only the text changes, so a stale snapshot
                             // can't undo a color/size/position change made meanwhile.
                             let body = from_obsidian_body(parsed.body.trim_end());
+                            copy_images(&body, &vault_images, &app_images);
                             if let Ok(Some(_)) = storage.update_note_with(pid, false, |n| {
                                 n.content = body;
                                 n.updated_at = fmtime;
@@ -319,6 +335,7 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                         } else {
                             // Pin Notes is newer — push our version back out.
                             let _ = write_note_file(vault, note);
+                            copy_images(&note.content, &app_images, &vault_images);
                         }
                     }
                 } else {
@@ -332,6 +349,7 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                     new.content = from_obsidian_body(parsed.body.trim_end());
                     new.is_visible = false;
                     new.is_pinned = parsed.pinned;
+                    copy_images(&new.content, &vault_images, &app_images);
                     if storage.create_note(new).is_ok() {
                         changed = true;
                     }
@@ -350,6 +368,7 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
                 note.content = from_obsidian_body(parsed.body.trim_end());
                 note.is_visible = false;
                 note.is_pinned = parsed.pinned;
+                copy_images(&note.content, &vault_images, &app_images);
                 if storage.create_note(note.clone()).is_ok() {
                     let _ = fs::remove_file(path); // old untracked name
                     let _ = write_note_file(vault, &note);
@@ -366,6 +385,7 @@ pub fn sync_once(storage: &NotesStorage, vault: &Path) -> bool {
         if !ids_with_files.contains(&note.id) {
             let _ = write_note_file(vault, note);
         }
+        copy_images(&note.content, &app_images, &vault_images);
     }
 
     changed
@@ -449,6 +469,22 @@ mod tests {
         let got = storage.get_note("id-1").unwrap().unwrap();
         assert_eq!(got.content, "Hello from Obsidian");
         assert_eq!(got.position_x, 777);
+    }
+
+    #[test]
+    fn note_images_travel_to_the_vault() {
+        let dir = std::env::temp_dir().join(format!("pinnotes-sync-img-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let vault = dir.join("vault");
+        fs::create_dir_all(&vault).unwrap();
+        let storage = NotesStorage::at(dir.join("notes.json"));
+        let path = storage.save_image(&[9, 9, 9], "png").unwrap();
+        let mut n = Note::new("img-1".into(), "#fff".into(), 0, 0);
+        n.content = format!("Look\n![]({})", path);
+        storage.create_note(n).unwrap();
+        sync_once(&storage, &vault);
+        assert!(vault.join(&path).exists(), "image copied next to the .md in the vault");
+        assert!(fs::read_to_string(vault.join("Look.md")).unwrap().contains(&path));
     }
 
     /// Windows refuses reserved device names like CON / NUL / COM1 as file names.

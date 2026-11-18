@@ -6,6 +6,8 @@ import { listen } from '@tauri-apps/api/event';
 import { useNoteStore } from '../store/noteStore';
 import { NoteEditor } from './NoteEditor';
 import { ColorPicker } from './ColorPicker';
+import { MoreMenu } from './MoreMenu';
+import { saveNoteAs, type ExportFormat } from '../editor/exportNote';
 import { NOTE_FONTS, toDarkPastel, lightenColor, isDarkColor, DEFAULT_FONT_SIZE, stepFontSize, hasMarkdown } from '../types';
 import { useTheme } from '../store/theme';
 import { useI18n } from '../store/i18n';
@@ -46,6 +48,8 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
   } = useNoteStore();
 
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const theme = useTheme();
@@ -377,7 +381,45 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
       e.preventDefault();
       handleClose();
     }
-  }, [handleClose]);
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod || e.altKey) return;
+    // Ctrl/Cmd+S: Save as…   Ctrl/Cmd + / −: text size
+    if (e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      setShowMore((v) => !v);
+    } else if (e.key === '=' || e.key === '+') {
+      e.preventDefault();
+      handleIncreaseFont();
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      handleDecreaseFont();
+    }
+  }, [handleClose, handleIncreaseFont, handleDecreaseFont]);
+
+  // Close the ⋯ menu on any click outside it.
+  useEffect(() => {
+    if (!showMore) return;
+    const close = () => setShowMore(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [showMore]);
+
+  const flash = useCallback((message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2600);
+  }, []);
+
+  const handleSave = useCallback(async (format: ExportFormat) => {
+    setShowMore(false);
+    if (!note) return;
+    try {
+      const name = await saveNoteAs(note.content, format, note.color);
+      if (name) flash(t('more.saved', { name }));
+    } catch (err) {
+      console.error('[Pin Notes] Save as failed:', err);
+      flash(t('more.saveFailed'));
+    }
+  }, [note, flash, t]);
 
   // In dark mode each note keeps its hue but becomes a dark, pastel-tinted surface.
   const displayColor = useMemo(() => {
@@ -488,28 +530,6 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
               <span className="font-btn-label" style={{ fontFamily: currentFont }}>Aa</span>
             </button>
 
-            <button
-              className="titlebar-btn font-size-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDecreaseFont();
-              }}
-              title={t('note.smallerText')}
-            >
-              <span className="font-size-label small">A</span>
-            </button>
-
-            <button
-              className="titlebar-btn font-size-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleIncreaseFont();
-              }}
-              title={t('note.largerText')}
-            >
-              <span className="font-size-label large">A</span>
-            </button>
-
             {/* Preview / edit toggle — only on notes that contain markdown / templates.
                 Shows the action you'll get: "Preview" (eye) while editing, "Edit"
                 (pencil, highlighted) while previewing. */}
@@ -537,8 +557,50 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             )}
           </div>
 
-          {/* RIGHT: keep on top, minimize, close */}
+          {/* RIGHT: find, more (save as, text size), keep on top, minimize, close */}
           <div className="titlebar-right">
+            <button
+              className="titlebar-btn find-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.dispatchEvent(new Event('pinnotes:find'));
+              }}
+              title={`${t('note.find')} (${/Mac/.test(navigator.platform) ? '⌘F' : 'Ctrl+F'})`}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+            </button>
+            <div className="more-wrap">
+              <button
+                className={`titlebar-btn more-btn ${showMore ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMore((v) => !v);
+                }}
+                title={`${t('note.more')} (${/Mac/.test(navigator.platform) ? '⌘S' : 'Ctrl+S'})`}
+                aria-haspopup="menu"
+                aria-expanded={showMore}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="5" cy="12" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="19" cy="12" r="2" />
+                </svg>
+              </button>
+              <AnimatePresence>
+                {showMore && (
+                  <MoreMenu
+                    key="more"
+                    fontSize={fontSize}
+                    onSave={handleSave}
+                    onSmaller={handleDecreaseFont}
+                    onLarger={handleIncreaseFont}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
             <button
               className={`titlebar-btn ontop-btn ${onTop ? 'active' : ''}`}
               onClick={(e) => {
@@ -589,6 +651,21 @@ export function NoteWindow({ noteId }: NoteWindowProps) {
             previewMode={previewMode}
           />
         </div>
+
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              className="note-toast"
+              role="status"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+            >
+              {toast}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div
           className="resize-handle"

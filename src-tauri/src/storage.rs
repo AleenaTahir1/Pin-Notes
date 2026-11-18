@@ -240,6 +240,131 @@ impl NotesStorage {
         let data = self.data.lock().map_err(|e| e.to_string())?;
         Ok(data.notes.iter().find(|n| n.id == id).cloned())
     }
+
+    /// Folder for pasted images, next to notes.json. Notes reference them as
+    /// `![](images/<file>)`, the same relative path used in the Obsidian vault.
+    pub fn images_dir(&self) -> PathBuf {
+        self.file_path
+            .parent()
+            .map(|p| p.join("images"))
+            .unwrap_or_else(|| PathBuf::from("images"))
+    }
+
+    /// Save a pasted image and return the path to put in the note.
+    pub fn save_image(&self, bytes: &[u8], ext: &str) -> Result<String, String> {
+        const MAX: usize = 25 * 1024 * 1024;
+        if bytes.is_empty() || bytes.len() > MAX {
+            return Err("Image is empty or larger than 25 MB".to_string());
+        }
+        let ext = ext.trim_start_matches('.').to_ascii_lowercase();
+        let ext = match ext.as_str() {
+            "png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" => ext,
+            _ => "png".to_string(),
+        };
+        let dir = self.images_dir();
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let name = format!("{}.{}", uuid::Uuid::new_v4(), ext);
+        fs::write(dir.join(&name), bytes).map_err(|e| e.to_string())?;
+        Ok(format!("images/{}", name))
+    }
+
+    /// Delete image files no note uses any more (e.g. a pasted image that was removed
+    /// from its note). Only files older than `min_age` are touched, so an image that is
+    /// being pasted right now is never caught.
+    pub fn remove_orphan_images(&self, min_age: std::time::Duration) -> usize {
+        let Ok(notes) = self.get_all_notes() else { return 0 };
+        let Ok(entries) = fs::read_dir(self.images_dir()) else { return 0 };
+        let mut removed = 0;
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            let path = format!("images/{}", name);
+            let old_enough = entry
+                .metadata()
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.elapsed().ok())
+                .is_some_and(|age| age >= min_age);
+            if old_enough && !notes.iter().any(|n| n.content.contains(&path)) && fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
+        }
+        removed
+    }
+
+    /// A pasted image as a `data:` URL, so it can travel inside copied HTML and
+    /// exported web pages.
+    pub fn image_data_url(&self, path: &str) -> Result<String, String> {
+        use base64::Engine;
+        let name = image_name(path).ok_or("Not an image path")?;
+        let bytes = fs::read(self.images_dir().join(name)).map_err(|e| e.to_string())?;
+        let mime = match name.rsplit('.').next().unwrap_or("").to_ascii_lowercase().as_str() {
+            "jpg" | "jpeg" => "image/jpeg",
+            "gif" => "image/gif",
+            "webp" => "image/webp",
+            "bmp" => "image/bmp",
+            _ => "image/png",
+        };
+        Ok(format!("data:{};base64,{}", mime, base64::engine::general_purpose::STANDARD.encode(bytes)))
+    }
+
+    /// Write an exported note to `path`; with `images_folder`, also copy the note's
+    /// pictures into that folder next to the file (for Markdown exports).
+    pub fn export_note(&self, path: &Path, contents: &str, images_folder: Option<&str>, images: &[String]) -> Result<(), String> {
+        fs::write(path, contents).map_err(|e| e.to_string())?;
+        if let Some(folder) = images_folder.filter(|f| !f.is_empty() && !f.contains(['/', '\\']) && *f != "..") {
+            let dir = path.parent().unwrap_or(Path::new(".")).join(folder);
+            for img in images {
+                if let Some(name) = image_name(img) {
+                    let src = self.images_dir().join(name);
+                    if src.exists() {
+                        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+                        fs::copy(&src, dir.join(name)).map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Delete the given images unless another note still uses them.
+    pub fn remove_unused_images(&self, candidates: &[String]) {
+        let Ok(notes) = self.get_all_notes() else { return };
+        let dir = self.images_dir();
+        for path in candidates {
+            if notes.iter().any(|n| n.content.contains(path.as_str())) {
+                continue;
+            }
+            if let Some(name) = path.strip_prefix("images/") {
+                let _ = fs::remove_file(dir.join(name));
+            }
+        }
+    }
+}
+
+/// The file name inside `images/` if `path` is a safe `images/<file>` path
+/// (no folders, no `..`), else None.
+pub fn image_name(path: &str) -> Option<&str> {
+    let name = path.strip_prefix("images/")?;
+    let ok = !name.is_empty()
+        && !name.starts_with('.')
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'));
+    ok.then_some(name)
+}
+
+/// `images/<file>` paths referenced by `![...](images/<file>)` in a note.
+pub fn image_refs(content: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = content;
+    while let Some(i) = rest.find("](images/") {
+        let after = &rest[i + 2..];
+        let end = after.find(')').unwrap_or(after.len());
+        let path = &after[..end];
+        if image_name(path).is_some() && !out.iter().any(|p: &String| p == path) {
+            out.push(path.to_string());
+        }
+        rest = &after[end..];
+    }
+    out
 }
 
 #[cfg(test)]
@@ -345,6 +470,64 @@ mod tests {
         // notes.json was renamed to .bak, but the new file never landed.
         fs::write(sibling(&p, ".bak"), GOOD).unwrap();
         assert_eq!(NotesStorage::at(p).get_all_notes().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn pasted_images_are_saved_found_and_cleaned_up() {
+        let p = tmp("images");
+        let s = NotesStorage::at(p.clone());
+        let path = s.save_image(&[1, 2, 3], "PNG").unwrap();
+        assert!(path.starts_with("images/") && path.ends_with(".png"));
+        assert!(s.images_dir().join(&path["images/".len()..]).exists());
+        let mut a = Note::new("a".into(), "#fff".into(), 0, 0);
+        a.content = format!("shot ![]({})\nand ![x]({}) again", path, path);
+        let mut b = Note::new("b".into(), "#fff".into(), 0, 0);
+        b.content = format!("![]({})", path);
+        s.create_note(a).unwrap();
+        s.create_note(b).unwrap();
+        assert_eq!(image_refs(&format!("![]({}) ![](images/../etc)", path)), vec![path.clone()]);
+        // still used by b: kept
+        s.delete_note("a").unwrap();
+        s.remove_unused_images(std::slice::from_ref(&path));
+        assert!(s.images_dir().join(&path["images/".len()..]).exists());
+        // no one uses it any more: removed
+        s.delete_note("b").unwrap();
+        s.remove_unused_images(std::slice::from_ref(&path));
+        assert!(!s.images_dir().join(&path["images/".len()..]).exists());
+        assert!(s.save_image(&[], "png").is_err());
+        assert!(s.save_image(&[1], "exe").unwrap().ends_with(".png"));
+    }
+
+    #[test]
+    fn orphan_images_are_removed_but_used_and_new_ones_kept() {
+        let p = tmp("orphans");
+        let s = NotesStorage::at(p);
+        let used = s.save_image(&[1], "png").unwrap();
+        let orphan = s.save_image(&[2], "png").unwrap();
+        let mut n = Note::new("a".into(), "#fff".into(), 0, 0);
+        n.content = format!("![]({})", used);
+        s.create_note(n).unwrap();
+        // brand-new files are left alone
+        assert_eq!(s.remove_orphan_images(std::time::Duration::from_secs(3600)), 0);
+        assert_eq!(s.remove_orphan_images(std::time::Duration::ZERO), 1);
+        assert!(s.images_dir().join(&used["images/".len()..]).exists());
+        assert!(!s.images_dir().join(&orphan["images/".len()..]).exists());
+    }
+
+    #[test]
+    fn export_writes_the_file_and_copies_pictures_safely() {
+        let p = tmp("export");
+        let s = NotesStorage::at(p.clone());
+        let img = s.save_image(&[137, 80, 78, 71], "png").unwrap();
+        assert!(s.image_data_url(&img).unwrap().starts_with("data:image/png;base64,iVBORw"));
+        assert!(s.image_data_url("images/../notes.json").is_err());
+        let out = p.parent().unwrap().join("My note.md");
+        s.export_note(&out, "# Hi", Some("My-note-images"), &[img.clone(), "images/../x".into()]).unwrap();
+        assert_eq!(fs::read_to_string(&out).unwrap(), "# Hi");
+        assert!(p.parent().unwrap().join("My-note-images").join(&img["images/".len()..]).exists());
+        // a folder name that tries to leave the export location is ignored
+        s.export_note(&out, "x", Some("../evil"), std::slice::from_ref(&img)).unwrap();
+        assert!(!p.parent().unwrap().parent().unwrap().join("evil").exists());
     }
 
     #[test]

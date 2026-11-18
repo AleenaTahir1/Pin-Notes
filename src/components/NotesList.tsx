@@ -226,7 +226,10 @@ export function NotesList() {
   };
 
   const getPreview = (content: string) => {
-    const firstLine = content.split('\n').find(line => line.trim() !== '');
+    const firstLine = content
+      .replace(/!\[[^\]]*\]\([^)\s]+\)/g, t('notesList.image'))
+      .split('\n')
+      .find(line => line.trim() !== '');
     if (!firstLine) return t('notesList.emptyNote');
     const clean = firstLine
       .replace(/==\{\w+\}/g, '')

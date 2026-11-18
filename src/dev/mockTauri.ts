@@ -68,6 +68,27 @@ export function installMockTauri() {
               rawJson: {},
             }
           : null;
+      case 'plugin:dialog|open':
+        return '/Users/you/Documents/Obsidian Vault/Pin Notes';
+      case 'set_obsidian_vault':
+        return notes.size;
+      case 'get_data_dir':
+        return '/mock';
+      case 'read_image':
+        return window.__pinImages?.[(a.path as string) ?? ''] ?? '';
+      case 'export_note':
+        (window as unknown as { __lastExport: unknown }).__lastExport = a;
+        return null;
+      case 'plugin:dialog|save':
+        return `/Users/you/Desktop/${((a.options as { defaultPath?: string })?.defaultPath) ?? 'note.md'}`;
+      case 'save_image': {
+        const bytes = args as unknown as Uint8Array;
+        let bin = '';
+        bytes.forEach((b) => (bin += String.fromCharCode(b)));
+        const path = `images/mock-${Object.keys(window.__pinImages ?? {}).length + 1}.png`;
+        window.__pinImages = { ...(window.__pinImages ?? {}), [path]: `data:image/png;base64,${btoa(bin)}` };
+        return path;
+      }
       case 'get_sync_status':
         return null;
       case 'get_vault_templates':

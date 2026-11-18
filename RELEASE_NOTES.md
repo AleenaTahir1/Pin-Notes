@@ -1,8 +1,8 @@
 ### What's new
 
-- Smoother writing: the page follows your cursor and Enter continues your lists
-- Undo and redo work everywhere (Ctrl+Z / Ctrl+Shift+Z)
-- Notes remember where you put them, and new ones open next to your mouse
-- Safer saving with a backup copy, so a crash can't erase your notes
-- Notes stay out of the taskbar, and the pin button lets a note sit behind other windows
-- Edge Dock, launch at startup and Chinese / English in the tray menu (thanks @daybreakerx)
+- Paste pictures straight into a note with Ctrl+V (Cmd+V on Mac), like in Word
+- Copy text and pictures together: select all, copy, and paste into Word, Google Docs or email
+- Find in a note with Ctrl+F (Cmd+F), or the magnifier in the title bar
+- Save as a web page, Markdown or plain text from the new ⋯ menu (Ctrl+S / Cmd+S)
+- Pictures sync to your Obsidian vault too
+- Text size now lives in the ⋯ menu, with Ctrl + and Ctrl − shortcuts

@@ -49,6 +49,9 @@ PinNotes gives you floating sticky notes that pin to your desktop — always on 
 - **Always on top, your choice** — Notes float over other windows; the pin button on a note lets it sit behind your work instead
 - **Obsidian sync** — Two-way sync with an Obsidian vault: edit notes in either app
 - **Markdown formatting** — Headings (H1–H6), **bold**, *italic*, ~~strikethrough~~, `inline code`, blockquotes, bullet lists, and tickable task checkboxes (`- [ ]` or `-[ ]`), shown live as you type (like Obsidian) and saved as plain markdown that round-trips with Obsidian
+- **Pictures in notes** — Paste a screenshot or copied image with Ctrl+V (Cmd+V); copy text and pictures together into Word, Docs or email
+- **Find in note** — Ctrl+F (Cmd+F) or the magnifier: matches are highlighted, Enter jumps to the next one
+- **Save as** — Export a note as a web page (pictures included), Markdown or plain text from the ⋯ menu
 - **Smooth editor** — Built on CodeMirror 6: the page follows your cursor, Enter continues lists, Enter on an empty item ends the list, full undo/redo, and long notes stay fast
 - **Preview mode** — Markdown/template notes get an eye toggle to flip between editing and a clean, read-only rendered view
 - **Templates** — Start notes from 9 built-in templates, or your own templates from your Obsidian vault
@@ -95,6 +98,10 @@ Download the latest release from the [Releases](https://github.com/AleenaTahir1/
 | **Ctrl+Alt+P** | Create a new note |
 | **Ctrl+Alt+L** | Open notes list |
 | **Ctrl+W** | Close the current note |
+| **Ctrl+F** | Find in the current note |
+| **Ctrl+S** | Save as (web page, Markdown, text) |
+| **Ctrl +** / **Ctrl −** | Larger / smaller text |
+| **Ctrl+V** | Paste text or a picture |
 | **Ctrl+Z** / **Ctrl+Shift+Z** | Undo / redo |
 
 ### System Tray

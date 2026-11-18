@@ -57,10 +57,26 @@ pub fn run() {
             get_sync_status,
             sync_obsidian_now,
             get_vault_templates,
+            save_image,
+            get_data_dir,
+            read_image,
+            export_note,
             edge_dock::snap_note_to_edge,
             edge_dock::reveal_docked_note,
         ])
         .setup(|app| {
+            // Pasted images are shown straight from the images folder.
+            {
+                let storage = app.state::<NotesStorage>();
+                let images = storage.images_dir();
+                let _ = std::fs::create_dir_all(&images);
+                // tidy pictures that were removed from their notes in earlier sessions
+                storage.remove_orphan_images(std::time::Duration::from_secs(3600));
+                if let Err(e) = app.asset_protocol_scope().allow_directory(&images, true) {
+                    eprintln!("[Pin Notes] Could not allow the images folder: {}", e);
+                }
+            }
+
             // Set up system tray
             if let Err(e) = tray::setup_tray(app.handle()) {
                 eprintln!("Failed to setup tray: {}", e);
@@ -114,6 +130,7 @@ pub fn run() {
                                 for id in &ids {
                                     if let Ok(Some(note)) = storage.get_note(id) {
                                         let _ = sync::write_note_file(vault, &note);
+                                        sync::copy_images(&note.content, &storage.images_dir(), &vault.join("images"));
                                     }
                                 }
                             }

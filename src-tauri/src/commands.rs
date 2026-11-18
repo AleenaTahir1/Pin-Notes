@@ -50,9 +50,57 @@ pub async fn delete_note(
     if let Some(window) = app.get_webview_window(&note_label(&id)) {
         let _ = window.close();
     }
+    let images = storage
+        .get_note(&id)?
+        .map(|n| crate::storage::image_refs(&n.content))
+        .unwrap_or_default();
     storage.delete_note(&id)?;
+    storage.remove_unused_images(&images);
     mirror_delete(&settings, &id);
     Ok(())
+}
+
+/// Save an image pasted into a note. The image bytes arrive as the raw request body
+/// and the file extension in the `x-ext` header. Returns `images/<file>`.
+#[tauri::command]
+pub fn save_image(storage: State<'_, NotesStorage>, request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Expected image bytes".to_string());
+    };
+    let ext = request
+        .headers()
+        .get("x-ext")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("png");
+    storage.save_image(bytes, ext)
+}
+
+/// A pasted picture as a data: URL (for copying with pictures and HTML export).
+#[tauri::command]
+pub async fn read_image(storage: State<'_, NotesStorage>, path: String) -> Result<String, String> {
+    storage.image_data_url(&path)
+}
+
+/// Save a note to a file the user picked (Save as…).
+#[tauri::command]
+pub async fn export_note(
+    storage: State<'_, NotesStorage>,
+    path: String,
+    contents: String,
+    images_folder: Option<String>,
+    images: Vec<String>,
+) -> Result<(), String> {
+    storage.export_note(std::path::Path::new(&path), &contents, images_folder.as_deref(), &images)
+}
+
+/// The folder notes (and their `images/`) live in, so the editor can show images.
+#[tauri::command]
+pub fn get_data_dir(storage: State<'_, NotesStorage>) -> Result<String, String> {
+    storage
+        .file_path
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .ok_or_else(|| "No data folder".to_string())
 }
 
 #[tauri::command]

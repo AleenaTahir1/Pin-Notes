@@ -7,6 +7,9 @@ import { HighlighterColor } from '../types';
 import { noteMarkdown } from '../editor/markdown';
 import { livePreview, previewFacet } from '../editor/livePreview';
 import { applyHighlight, removeHighlight } from '../editor/highlight';
+import { pasteImages } from '../editor/images';
+import { copyWithImages } from '../editor/exportNote';
+import { findInNote, toggleFind } from '../editor/find';
 import { useI18n, type MessageKey } from '../store/i18n';
 
 interface NoteEditorProps {
@@ -99,6 +102,9 @@ export function NoteEditor({
           EditorView.lineWrapping,
           noteMarkdown(),
           livePreview,
+          pasteImages,
+          copyWithImages,
+          findInNote,
           scrollRoom,
           placeholderRef.current.of(placeholder(t('editor.placeholder'))),
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
@@ -123,11 +129,24 @@ export function NoteEditor({
     });
     viewRef.current = view;
 
+    // The title-bar magnifier, and Ctrl+F / Cmd+F even when the editor isn't focused.
+    const onFind = () => toggleFind(view);
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'f' && !view.dom.contains(e.target as Node)) {
+        e.preventDefault();
+        toggleFind(view);
+      }
+    };
+    window.addEventListener('pinnotes:find', onFind);
+    window.addEventListener('keydown', onKey);
+
     // Open with the caret at the end, ready to keep writing.
     view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true });
     view.focus();
 
     return () => {
+      window.removeEventListener('pinnotes:find', onFind);
+      window.removeEventListener('keydown', onKey);
       view.destroy();
       viewRef.current = null;
     };

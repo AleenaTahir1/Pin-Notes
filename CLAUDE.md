@@ -27,6 +27,10 @@ PinNotes is a Windows sticky notes app built with **Tauri 2.0** (Rust backend + 
 - `editor/markdown.ts` — markdown language config: `==highlight==` / `=={color}…==` parser extension, removed CommonMark rules (indented code, setext headings, HTML), Enter/Backspace keymap
 - `editor/livePreview.ts` — Obsidian-style decorations: hides markers (shown faintly on the active line), checkbox and bullet widgets, heading/quote line classes
 - `editor/highlight.ts` — apply/remove highlight transactions for the selection strip
+- `editor/images.ts` — pasted pictures: saved via `save_image` into `<data dir>/images/`, stored as `![](images/<file>)`, shown with an image widget (asset protocol)
+- `editor/find.ts` — find in note (custom @codemirror/search panel, Ctrl/Cmd+F, title-bar magnifier)
+- `editor/exportNote.ts` — Save as (.html with embedded pictures, .md with an images folder, .txt) and copy with pictures (HTML on the clipboard)
+- `components/MoreMenu.tsx` — the ⋯ menu (Save as, text size)
 - `dev/mockTauri.ts` — in-memory fake backend so `npm run dev` works in a plain browser
 - `types.ts` — shared interfaces (`Note`), color constants (`NOTE_COLORS`, `HIGHLIGHTER_COLORS`)
 - Content is sent to the backend 150ms after typing pauses; the backend only updates memory

@@ -1,6 +1,6 @@
 [package]
 name = "pin-notes"
-version = "1.1.0"
+version = "1.2.0"
 description = "Floating sticky notes app - fast, local, no account required"
 authors = ["Aleena Tahir"]
 license = "MIT"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api", "protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-positioner = { version = "2", features = ["tray-icon"] }
@@ -28,3 +28,4 @@ serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
 directories = "5"
 chrono = "0.4"
+base64 = "0.22"

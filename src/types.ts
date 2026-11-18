@@ -26,6 +26,8 @@ export function hasMarkdown(content: string): boolean {
   if (!content) return false;
   // Block markers at the start of a line: # heading, - / * bullet, > quote
   if (/^\s{0,3}(#{1,6}\s|[-*]\s|>\s)/m.test(content)) return true;
+  // A pasted image: ![](images/…)
+  if (/!\[[^\]]*\]\([^)\s]+\)/.test(content)) return true;
   // Task checkbox: - [ ] / - [x] (space after the dash optional)
   if (/[-*]\s*\[[ xX]\]/.test(content)) return true;
   // Inline: **bold**, ~~strike~~, `code`, ==highlight==
@@ -125,8 +127,8 @@ export const NOTE_TEMPLATES: BuiltinTemplate[] = [
     nameKey: 'template.meeting',
     builtin: true,
     content: {
-      zh: '# 会议 — {{date}}\n\n参会人员：\n\n## 议程\n- \n\n## 记录\n\n## 待办事项\n- [ ] ',
-      en: '# Meeting — {{date}}\n\nAttendees: \n\n## Agenda\n- \n\n## Notes\n\n## Action items\n- [ ] ',
+      zh: '# 会议：{{date}}\n\n参会人员：\n\n## 议程\n- \n\n## 记录\n\n## 待办事项\n- [ ] ',
+      en: '# Meeting: {{date}}\n\nAttendees: \n\n## Agenda\n- \n\n## Notes\n\n## Action items\n- [ ] ',
     },
   },
   {
@@ -141,8 +143,8 @@ export const NOTE_TEMPLATES: BuiltinTemplate[] = [
     nameKey: 'template.habit',
     builtin: true,
     content: {
-      zh: '# 习惯 — {{date}}\n\n- [ ] 喝水\n- [ ] 运动\n- [ ] 阅读\n- [ ] 睡眠 8 小时',
-      en: '# Habits — {{date}}\n\n- [ ] Water\n- [ ] Exercise\n- [ ] Read\n- [ ] Sleep 8h',
+      zh: '# 习惯：{{date}}\n\n- [ ] 喝水\n- [ ] 运动\n- [ ] 阅读\n- [ ] 睡眠 8 小时',
+      en: '# Habits: {{date}}\n\n- [ ] Water\n- [ ] Exercise\n- [ ] Read\n- [ ] Sleep 8h',
     },
   },
   {

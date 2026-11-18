@@ -1,6 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
 import { EditorState, Facet, Range } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from '@codemirror/view';
+import { ImageWidget, parseImage } from './images';
 
 // Obsidian-style live preview: the document stays plain markdown, but markers (#, **,
 // ==, >, - [ ]) are hidden and the text is styled. Markers reappear on the line being
@@ -137,6 +138,15 @@ function build(view: EditorView): { all: DecorationSet; atomic: DecorationSet } 
             atomic.push(r);
             decos.push(lineClass(checked ? 'cm-task cm-task-done' : 'cm-task').range(line.from));
             return;
+          }
+          case 'Image': {
+            // A pasted picture: shown in place of its ![](images/…) text.
+            const img = parseImage(state.sliceDoc(node.from, node.to));
+            if (!img) return;
+            const r = Decoration.replace({ widget: new ImageWidget(img.path, img.alt) }).range(node.from, node.to);
+            decos.push(r);
+            atomic.push(r);
+            return false;
           }
           case 'StrongEmphasis':
             decos.push(strong.range(node.from, node.to));
